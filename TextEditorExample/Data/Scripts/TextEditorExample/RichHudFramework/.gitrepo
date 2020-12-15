@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:ZachHembree/RichHudFramework.Client.git
+	branch = WorldDraw
+	commit = 8e39e4e3d2d2ee9f09cbd01ee7517b3d3ee94aaf
+	parent = 29bea926f5344ac02f43aa725fba12a169ac2b39
+	method = merge
+	cmdver = 0.4.1
