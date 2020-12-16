@@ -205,7 +205,7 @@ namespace TextEditorExample
             private readonly HudChain layout;
             private readonly EditorDropdown<TextBuilderModes> textBuilderModes;
             private readonly EditorDropdown<float> sizeList;
-            private readonly EditorToggleButton boldToggle, italicToggle;
+            private readonly EditorToggleButton boldToggle, italicToggle, underlineToggle;
             private readonly EditorDropdown<IFontMin> fontList;
             private readonly TexturedBox background;
 
@@ -264,9 +264,15 @@ namespace TextEditorExample
                     Text = "B",
                 };
 
+                underlineToggle = new EditorToggleButton()
+                {
+                    Format = buttonFormat.WithStyle(FontStyles.Underline),
+                    Text = "U",
+                };
+
                 italicToggle = new EditorToggleButton()
                 {
-                    Format = buttonFormat,
+                    Format = buttonFormat.WithStyle(FontStyles.Italic),
                     Text = "I",
                 };
 
@@ -280,12 +286,13 @@ namespace TextEditorExample
                     // The width of the parent could very well be greater than the width of the controls.
                     ParentAlignment = ParentAlignments.Left | ParentAlignments.InnerH | ParentAlignments.UsePadding,
                     // The order the elements will appear on the toolbar from left to right.
-                    ChainContainer = { fontList, sizeList, boldToggle, italicToggle, textBuilderModes }
+                    ChainContainer = { fontList, sizeList, boldToggle, underlineToggle, italicToggle, textBuilderModes }
                 };
 
                 fontList.OnSelectionChanged += UpdateFormat;
                 sizeList.OnSelectionChanged += UpdateFormat;
                 boldToggle.MouseInput.OnLeftClick += UpdateFormat;
+                underlineToggle.MouseInput.OnLeftClick += UpdateFormat;
                 italicToggle.MouseInput.OnLeftClick += UpdateFormat;
 
                 Height = 30f;
@@ -303,6 +310,7 @@ namespace TextEditorExample
             {
                 FontStyles style = newFormat.FontStyle;
                 boldToggle.Selected = style.HasFlag(FontStyles.Bold);
+                underlineToggle.Selected = style.HasFlag(FontStyles.Underline);
                 italicToggle.Selected = style.HasFlag(FontStyles.Italic);
 
                 fontList.SetSelection(newFormat.Font);
@@ -319,17 +327,17 @@ namespace TextEditorExample
                     float textSize = sizeList.Selection.AssocMember;
                     IFontMin font = fontList.Selection.AssocMember;
                     FontStyles style = FontStyles.Regular;
-                    
+
+                    boldToggle.Enabled = font.IsStyleDefined(FontStyles.Bold);
+
                     if (boldToggle.Selected)
-                    {
-                        if (font.IsStyleDefined(FontStyles.Bold))
-                            style |= FontStyles.Bold;
-                        else
-                            boldToggle.Selected = false;
-                    }
+                        style |= FontStyles.Bold;
+
+                    if (underlineToggle.Selected)
+                        style |= FontStyles.Underline;
 
                     if (italicToggle.Selected)
-                        style |= FontStyles.Underline;
+                        style |= FontStyles.Italic;
 
                     _format = new GlyphFormat(_format.Color, _format.Alignment, textSize, font.GetStyleIndex(style));
                     OnFormatChanged?.Invoke();
@@ -362,34 +370,72 @@ namespace TextEditorExample
         /// </summary>
         private class EditorToggleButton : LabelBoxButton
         {
-            public bool Selected
+            /// <summary>
+            /// Indicates whether the button will accept input
+            /// </summary>
+            public bool Enabled
             {
-                get { return _selected; }
+                get { return _mouseInput.Visible; }
                 set
                 {
-                    if (value)
-                        Color = SelectColor;
+                    if (!value)
+                    {
+                        highlight.Color = DisabledColor;
+                        highlight.Visible = true;
+                        Selected = false;
+                    }
                     else
-                        Color = NormalColor;
+                        highlight.Color = HighlightColor;
 
-                    _selected = value;
+                    _mouseInput.Visible = value;
                 }
             }
 
+            /// <summary>
+            /// Used to indicate whether the button has been toggled
+            /// </summary>
+            public bool Selected { get; set; }
+
+            /// <summary>
+            /// Color of the button when enabled and not selected
+            /// </summary>
             public Color NormalColor { get; set; }
+
+            /// <summary>
+            /// Button color when selected
+            /// </summary>
             public Color SelectColor { get; set; }
 
-            private bool _selected;
+            /// <summary>
+            /// Button color when disabled
+            /// </summary>
+            public Color DisabledColor { get; set; }
+
+            /// <summary>
+            /// Color of the button's highlight overlay
+            /// </summary>
+            public override Color HighlightColor { get; set; }
+
+            private readonly TexturedBox highlight;
 
             public EditorToggleButton(HudElementBase parent = null) : base(parent)
             {
+                highlight = new TexturedBox(this)
+                {
+                    Color = TerminalFormatting.HighlightOverlayColor,
+                    DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                    Visible = false,
+                };
+
                 HighlightEnabled = true;
                 AutoResize = false;
                 VertCenterText = true;
+                Enabled = true;
 
-                NormalColor = new Color(41, 54, 62);
+                NormalColor = TerminalFormatting.ListBgColor;
                 SelectColor = new Color(58, 68, 77);
-                HighlightColor = new Color(68, 78, 87);
+                HighlightColor = TerminalFormatting.HighlightOverlayColor;
+                DisabledColor = new Color(50, 50, 50, 40);
 
                 Size = new Vector2(32f, 30f);
                 Color = NormalColor;
@@ -399,7 +445,24 @@ namespace TextEditorExample
 
             private void ToggleEnabled(object sender, EventArgs args)
             {
-                Selected = !Selected;
+                if (Enabled)
+                    Selected = !Selected;
+            }
+
+            protected override void CursorEntered(object sender, EventArgs args)
+            {
+                if (Enabled && HighlightEnabled)
+                {
+                    highlight.Visible = true;
+                }
+            }
+
+            protected override void CursorExited(object sender, EventArgs args)
+            {
+                if (Enabled && HighlightEnabled)
+                {
+                    highlight.Visible = false;
+                }
             }
         }
     }
