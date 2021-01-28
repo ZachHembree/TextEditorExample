@@ -24,6 +24,8 @@ namespace TextEditorExample
         {
             textBox = new ScrollableTextBox(body) 
             { 
+                DimAlignment = DimAlignments.Width | DimAlignments.IgnorePadding,
+                // Make room for the toolbar
                 ParentAlignment = ParentAlignments.Bottom | ParentAlignments.InnerV,
             };
 
@@ -31,18 +33,19 @@ namespace TextEditorExample
             {
                 DimAlignment = DimAlignments.Width,
                 ParentAlignment = ParentAlignments.Bottom,
+                // Is this necessary?
                 Format = GlyphFormat.White,
                 BulderMode = textBox.text.BuilderMode,
             };
 
-            toolBar.OnFormatChanged += FormatChanged;
-            toolBar.OnBuildModeChanged += BuilderModeChanged;
+            toolBar.FormatChanged += FormatChanged;
+            toolBar.BuildModeChanged += BuilderModeChanged;
 
             // Window styling:
             BodyColor = new Color(41, 54, 62, 150);
             BorderColor = new Color(58, 68, 77);
 
-            Header.Format = new GlyphFormat(GlyphFormat.Blueish.Color, TextAlignment.Center, 1.08f);
+            HeaderBuilder.Format = new GlyphFormat(GlyphFormat.Blueish.Color, TextAlignment.Center, 1.08f);
             header.Height = 30f;
 
             HeaderText = "Example Text Editor";
@@ -66,7 +69,7 @@ namespace TextEditorExample
             textBox.text.BuilderMode = toolBar.BulderMode;
         }
 
-        protected override void Draw(object matrix)
+        protected override void Layout()
         {
             MinimumSize = new Vector2(Math.Max(toolBar.MinimumWidth, MinimumSize.X), MinimumSize.Y);
 
@@ -129,7 +132,6 @@ namespace TextEditorExample
                 
                 The TextBoard allows you to set an offset for the text being rendered starting from the
                 center of the element. Text outside the bounds of the element will not be drawn.
-                Offset is measured in pixels and updates with changes to scale.
                  
                 An offset in the negative direction on the X-axis will offset the text to the left; a positive
                 offset will move the text to the right.
@@ -177,15 +179,15 @@ namespace TextEditorExample
             /// <summary>
             /// Invoked when a change is made to the text format
             /// </summary>
-            public event Action OnFormatChanged;
+            public event Action FormatChanged;
 
             /// <summary>
             /// Invoked when the set text builder mode is changed
             /// </summary>
-            public event EventHandler OnBuildModeChanged
+            public event EventHandler BuildModeChanged
             {
-                add { textBuilderModes.OnSelectionChanged += value; }
-                remove { textBuilderModes.OnSelectionChanged -= value; }
+                add { textBuilderModes.SelectionChanged += value; }
+                remove { textBuilderModes.SelectionChanged -= value; }
             }
 
             /// <summary>
@@ -286,20 +288,20 @@ namespace TextEditorExample
                     // The width of the parent could very well be greater than the width of the controls.
                     ParentAlignment = ParentAlignments.Left | ParentAlignments.InnerH | ParentAlignments.UsePadding,
                     // The order the elements will appear on the toolbar from left to right.
-                    ChainContainer = { fontList, sizeList, boldToggle, underlineToggle, italicToggle, textBuilderModes }
+                    CollectionContainer = { fontList, sizeList, boldToggle, underlineToggle, italicToggle, textBuilderModes }
                 };
 
-                fontList.OnSelectionChanged += UpdateFormat;
-                sizeList.OnSelectionChanged += UpdateFormat;
-                boldToggle.MouseInput.OnLeftClick += UpdateFormat;
-                underlineToggle.MouseInput.OnLeftClick += UpdateFormat;
-                italicToggle.MouseInput.OnLeftClick += UpdateFormat;
+                fontList.SelectionChanged += UpdateFormat;
+                sizeList.SelectionChanged += UpdateFormat;
+                boldToggle.MouseInput.LeftClicked += UpdateFormat;
+                underlineToggle.MouseInput.LeftClicked += UpdateFormat;
+                italicToggle.MouseInput.LeftClicked += UpdateFormat;
 
                 Height = 30f;
-                _format = GlyphFormat.White;
+                SetFormat(GlyphFormat.White);
             }
 
-            protected override void Draw(object matrix)
+            protected override void Layout()
             {
                 // The width of the toolbar should not be less than the total width of the controls
                 // it contains.
@@ -317,7 +319,7 @@ namespace TextEditorExample
                 sizeList.SetSelection(newFormat.TextSize);
 
                 _format = newFormat;
-                OnFormatChanged?.Invoke();
+                FormatChanged?.Invoke();
             }
 
             private void UpdateFormat(object sender, EventArgs args)
@@ -340,7 +342,7 @@ namespace TextEditorExample
                         style |= FontStyles.Italic;
 
                     _format = new GlyphFormat(_format.Color, _format.Alignment, textSize, font.GetStyleIndex(style));
-                    OnFormatChanged?.Invoke();
+                    FormatChanged?.Invoke();
                 }
             }
         }
@@ -357,8 +359,8 @@ namespace TextEditorExample
                 scrollBar.Padding = new Vector2(12f, 8f);
                 scrollBar.Width = 20f;
 
-                //display.divider.Padding = new Vector2(4f, 8f);
-                //display.arrow.Width = 22f;
+                display.divider.Padding = new Vector2(4f, 8f);
+                display.arrow.Width = 22f;
 
                 listBox.Height = 0f;
                 listBox.MinVisibleCount = 4;
@@ -440,7 +442,7 @@ namespace TextEditorExample
                 Size = new Vector2(32f, 30f);
                 Color = NormalColor;
 
-                MouseInput.OnLeftClick += ToggleEnabled;
+                MouseInput.LeftClicked += ToggleEnabled;
             }
 
             private void ToggleEnabled(object sender, EventArgs args)
