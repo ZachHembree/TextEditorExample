@@ -23,7 +23,7 @@ namespace RichHudFramework.UI.Client
         /// Invoked whenver a change occurs to a control that requires a response, like a change
         /// to a value.
         /// </summary>
-        public event EventHandler OnControlChanged;
+        public event EventHandler ControlChanged;
 
         /// <summary>
         /// The name of the control as it appears in the terminal.
@@ -60,8 +60,11 @@ namespace RichHudFramework.UI.Client
 
         protected virtual void ControlChangedCallback()
         {
-            OnControlChanged?.Invoke(this, EventArgs.Empty);
-            ControlChangedHandler?.Invoke(this, EventArgs.Empty);
+            Internal.ExceptionHandler.Run(() => 
+            {
+                ControlChanged?.Invoke(this, EventArgs.Empty);
+                ControlChangedHandler?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         public TerminalControlBase(ControlMembers data)

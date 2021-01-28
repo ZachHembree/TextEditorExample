@@ -37,17 +37,13 @@ namespace RichHudFramework.UI
     /// </summary>
     public class ListBoxEntry<T> : ScrollBoxEntryTuple<LabelButton, T>
     {
-        /// <summary>
-        /// Object associated with the entry
-        /// </summary>
-        public T AssocMember { get; set; }
-
         private readonly LabelButton button;
 
         public ListBoxEntry()
         {
             button = new LabelButton() { AutoResize = false };
-            Element = button;
+            SetElement(button);
+            Element.ZOffset = 1;
         }
 
         public object GetOrSetMember(object data, int memberEnum)
@@ -59,9 +55,9 @@ namespace RichHudFramework.UI
                 case ListBoxEntryAccessors.Name:
                     {
                         if (data == null)
-                            Element.Text = new RichText(data as IList<RichStringMembers>);
+                            Element.Text = new RichText(data as List<RichStringMembers>);
                         else
-                            return Element.Text.ApiData;
+                            return Element.Text.apiData;
 
                         break;
                     }

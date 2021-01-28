@@ -7,29 +7,11 @@ using GlyphFormatMembers = VRage.MyTuple<byte, float, VRageMath.Vector2I, VRageM
 namespace RichHudFramework.UI.Server
 {
     /// <summary>
-    /// A pair of horizontally aligned on and off bordered buttons used to indicate a boolean value.
+    /// A pair of horizontally aligned on and off bordered buttons used to indicate a boolean value. Made to
+    /// resemble on/off button used in the SE terminal, sans name tag.
     /// </summary>
     public class OnOffButton : HudElementBase
     {   
-        public override float Width 
-        { 
-            get { return buttonChain.Width; } 
-            set 
-            {
-                if (value > Padding.X)
-                    value -= Padding.X;
-
-                value -= buttonChain.Spacing;
-                value /= 2f;
-
-                buttonChain.MemberMaxSize = new Vector2(value, buttonChain.MemberMaxSize.Y);
-            } 
-        }
-
-        public override float Height { get { return buttonChain.Height; } set { buttonChain.Height = value; } }
-
-        public override Vector2 Padding { get { return buttonChain.Padding; } set { buttonChain.Padding = value; } }
-
         /// <summary>
         /// Distance between the on and off buttons
         /// </summary>
@@ -69,14 +51,14 @@ namespace RichHudFramework.UI.Server
         protected readonly HudChain buttonChain;
         protected readonly BorderBox selectionHighlight;
 
-        public OnOffButton(HudParentBase parent = null) : base(parent)
+        public OnOffButton(HudParentBase parent) : base(parent)
         {
             on = new BorderedButton()
             {
                 Text = "On",
                 Padding = Vector2.Zero,
                 Size = new Vector2(71f, 49f),
-                HighlightEnabled = false,
+                HighlightEnabled = true,
             };
 
             on.BorderThickness = 2f;
@@ -86,7 +68,7 @@ namespace RichHudFramework.UI.Server
                 Text = "Off",
                 Padding = Vector2.Zero,
                 Size = new Vector2(71f, 49f),
-                HighlightEnabled = false,
+                HighlightEnabled = true,
             };
 
             off.BorderThickness = 2f;
@@ -95,19 +77,22 @@ namespace RichHudFramework.UI.Server
             {
                 SizingMode = HudChainSizingModes.FitMembersBoth | HudChainSizingModes.FitChainBoth,
                 Spacing = 9f,
-                ChainContainer = { on, off }
+                CollectionContainer = { on, off }
             };
 
-            on.MouseInput.OnLeftClick += ToggleValue;
-            off.MouseInput.OnLeftClick += ToggleValue;
+            on.MouseInput.LeftClicked += ToggleValue;
+            off.MouseInput.LeftClicked += ToggleValue;
 
             selectionHighlight = new BorderBox(buttonChain)
             { 
                 Color = Color.White 
             };
 
-            Size = new Vector2(250f, 50f);
+            Size = new Vector2(200f, 50f);
         }
+
+        public OnOffButton() : this(null)
+        { }
 
         private void ToggleValue(object sender, EventArgs args)
         {
@@ -116,14 +101,18 @@ namespace RichHudFramework.UI.Server
 
         protected override void Layout()
         {
+            Vector2 buttonSize = cachedSize - cachedPadding;
+            buttonSize.X = buttonSize.X / 2f - buttonChain.Spacing;
+            buttonChain.MemberMaxSize = buttonSize;
+
             if (Value)
             {
-                selectionHighlight.Size = on.Size;
+                selectionHighlight.Size = buttonSize;
                 selectionHighlight.Offset = on.Offset;
             }
             else
             {
-                selectionHighlight.Size = off.Size;
+                selectionHighlight.Size = buttonSize;
                 selectionHighlight.Offset = off.Offset;
             }
         }

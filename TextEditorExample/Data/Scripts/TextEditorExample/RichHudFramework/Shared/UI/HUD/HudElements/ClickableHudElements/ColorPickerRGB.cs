@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using RichHudFramework.UI.Rendering;
 using VRageMath;
 
@@ -13,24 +14,23 @@ namespace RichHudFramework.UI.Server
     public class ColorPickerRGB : HudElementBase
     {
         /// <summary>
-        /// Text rendered by the label.
+        /// Text rendered by the label
         /// </summary>
         public RichText Name { get { return name.TextBoard.GetText(); } set { name.TextBoard.SetText(value); } }
 
         /// <summary>
-        /// TextBoard backing the label element.
+        /// Text builder backing the label
         /// </summary>
-        public ITextBoard TextBoard => name.TextBoard;
+        public ITextBuilder NameBuilder => name.TextBoard;
 
         public override float Width
         {
-            get { return mainChain.Width; }
-
             set
             {
                 if (value > Padding.X)
                     value -= Padding.X;
 
+                _absoluteWidth = (value / Scale);
                 display.Width = value - name.Width;
                 colorSliderColumn.Width = display.Width;
             }
@@ -38,14 +38,13 @@ namespace RichHudFramework.UI.Server
 
         public override float Height
         {
-            get { return mainChain.Height; }
-
             set
             {
                 if (value > Padding.Y)
                     value -= Padding.Y;
 
-                value = (value - headerChain.Height) / 3f;
+                _absoluteHeight = (value / Scale);
+                value = (value - headerChain.Height - 15f) / 3f;
                 colorNameColumn.MemberMaxSize = new Vector2(colorNameColumn.MemberMaxSize.X, value);
                 colorSliderColumn.MemberMaxSize = new Vector2(colorSliderColumn.MemberMaxSize.X, value);
             }
@@ -66,8 +65,6 @@ namespace RichHudFramework.UI.Server
             }
         }
 
-        public override Vector2 Padding { get { return mainChain.Padding; } set { mainChain.Padding = value; } }
-
         // Header
         private readonly Label name;
         private readonly TexturedBox display;
@@ -80,9 +77,10 @@ namespace RichHudFramework.UI.Server
         private readonly HudChain<HudElementContainer<SliderBox>, SliderBox> colorSliderColumn;
 
         private readonly HudChain mainChain, colorChain;
+        private readonly StringBuilder valueBuilder;
         private Color _color;
 
-        public ColorPickerRGB(HudParentBase parent = null) : base(parent)
+        public ColorPickerRGB(HudParentBase parent) : base(parent)
         {
             // Header
             name = new Label()
@@ -110,7 +108,7 @@ namespace RichHudFramework.UI.Server
                 SizingMode = HudChainSizingModes.FitMembersOffAxis | HudChainSizingModes.FitChainBoth,
                 Height = 22f,
                 Spacing = 0f,
-                ChainContainer = { name, display }
+                CollectionContainer = { name, display }
             };
 
             // Color picker
@@ -123,7 +121,7 @@ namespace RichHudFramework.UI.Server
                 SizingMode = HudChainSizingModes.FitMembersBoth | HudChainSizingModes.FitChainBoth,
                 Width = 87f,
                 Spacing = 5f,
-                ChainContainer = { rText, gText, bText }
+                CollectionContainer = { rText, gText, bText }
             };
 
             r = new SliderBox() { Min = 0f, Max = 255f, Height = 47f };
@@ -135,13 +133,13 @@ namespace RichHudFramework.UI.Server
                 SizingMode = HudChainSizingModes.FitMembersBoth | HudChainSizingModes.FitChainBoth,
                 Width = 231f,
                 Spacing = 5f,
-                ChainContainer = { r, g, b }
+                CollectionContainer = { r, g, b }
             };
 
             colorChain = new HudChain(false)
             {
                 SizingMode = HudChainSizingModes.FitChainBoth,
-                ChainContainer =
+                CollectionContainer =
                 {
                     colorNameColumn,
                     colorSliderColumn,
@@ -151,15 +149,20 @@ namespace RichHudFramework.UI.Server
             mainChain = new HudChain(true, this)
             {
                 SizingMode = HudChainSizingModes.FitChainBoth,
-                Size = new Vector2(318f, 171f),
                 Spacing = 5f,
-                ChainContainer =
+                CollectionContainer =
                 {
                     headerChain,
                     colorChain,
                 }
             };
+
+            Size = new Vector2(318f, 163f);
+            valueBuilder = new StringBuilder();
         }
+
+        public ColorPickerRGB() : this(null)
+        { }
 
         protected override void HandleInput(Vector2 cursorPos)
         {
@@ -171,9 +174,20 @@ namespace RichHudFramework.UI.Server
                 A = 255
             };
 
-            rText.TextBoard.SetText($"R: {_color.R}");
-            gText.TextBoard.SetText($"G: {_color.G}");
-            bText.TextBoard.SetText($"B: {_color.B}");
+            valueBuilder.Clear();
+            valueBuilder.Append("R: ");
+            valueBuilder.Append(_color.R);
+            rText.TextBoard.SetText(valueBuilder);
+
+            valueBuilder.Clear();
+            valueBuilder.Append("G: ");
+            valueBuilder.Append(_color.G);
+            gText.TextBoard.SetText(valueBuilder);
+
+            valueBuilder.Clear();
+            valueBuilder.Append("B: ");
+            valueBuilder.Append(_color.B);
+            bText.TextBoard.SetText(valueBuilder);
 
             display.Color = _color;
         }

@@ -9,42 +9,6 @@ namespace RichHudFramework.UI
     public class ScrollBar : HudElementBase, IClickableElement
     {
         /// <summary>
-        /// Width of the scrollbar.
-        /// </summary>
-        public override float Width
-        {
-            get { return slide.Width + Padding.X; }
-            set
-            {
-                if (value > Padding.X)
-                    value -= Padding.X;
-
-                slide.BarWidth = value;
-
-                if (Vertical)
-                    slide.SliderWidth = value;
-            }
-        }
-
-        /// <summary>
-        /// Height of the scrollbar.
-        /// </summary>
-        public override float Height
-        {
-            get { return slide.Height + Padding.Y; }
-            set
-            {
-                if (value > Padding.Y)
-                    value -= Padding.Y;
-
-                slide.BarHeight = value;
-
-                if (!Vertical)
-                    slide.SliderHeight = value;
-            }
-        }
-
-        /// <summary>
         /// Minimum allowable value.
         /// </summary>
         public float Min
@@ -86,14 +50,14 @@ namespace RichHudFramework.UI
 
         public readonly SliderBar slide;
 
-        public ScrollBar(HudParentBase parent = null) : base(parent)
+        public ScrollBar(HudParentBase parent) : base(parent)
         {
-            slide = new SliderBar(this) 
-            { 
-                Reverse = true, 
+            slide = new SliderBar(this)
+            {
+                Reverse = true,
                 Vertical = true,
-                SliderWidth = 12f,
-                BarWidth = 12f,
+                SliderWidth = 20f,
+                BarWidth = 20f,
 
                 SliderColor = new Color(103, 109, 124),
                 SliderHighlight = new Color(137, 140, 149),
@@ -101,18 +65,27 @@ namespace RichHudFramework.UI
                 BarColor = new Color(41, 51, 61),
             };
 
+            Size = new Vector2(20f, 300f);
             Padding = new Vector2(18f, 18f);
-            Size = new Vector2(317f, 47f);
+            slide.SliderVisible = false;
         }
+
+        public ScrollBar() : this(null)
+        { }
 
         protected override void Layout()
         {
+            Vector2 size = cachedSize - cachedPadding;
+            slide.BarSize = size;
+
             if (Vertical)
             {
+                slide.SliderWidth = size.X;
                 slide.SliderVisible = slide.SliderHeight < slide.BarHeight;
             }
             else
             {
+                slide.SliderHeight = size.Y;
                 slide.SliderVisible = slide.SliderWidth < slide.BarWidth;
             }
         }

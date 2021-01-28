@@ -116,7 +116,7 @@ namespace RichHudFramework
 
                     _absoluteWidth = value / Scale;
 
-                    if (offAxis == 0 && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
+                    if (value > 0f && offAxis == 0 && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
                         _absMaxSize.X = _absoluteWidth;
                 }
             }
@@ -133,7 +133,7 @@ namespace RichHudFramework
 
                     _absoluteHeight = value / Scale;
 
-                    if (offAxis == 1 && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
+                    if (value > 0f && offAxis == 1 && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
                         _absMaxSize.Y = _absoluteHeight;
                 }
             }
@@ -185,56 +185,38 @@ namespace RichHudFramework
                 }
             }
 
-            protected override bool BeginLayout(bool refresh)
-            {
-                if (Visible)
-                {
-                    UpdateCache();
-                    Layout();
-                    UpdateCache();
-                }
-
-                return refresh;
-            }
-
             protected override void Layout()
             {
                 ClampElementSizeRange();
                 UpdateMemberSizes();
 
                 Vector2 visibleTotalSize = GetVisibleTotalSize(),
-                    newSize = GetNewSize(cachedSize - cachedPadding, visibleTotalSize);
+                    listSize = GetListSize(cachedSize - cachedPadding, visibleTotalSize);
 
-                cachedSize = newSize;
-                _absoluteWidth = cachedSize.X / Scale;
-                _absoluteHeight = cachedSize.Y / Scale;
-                cachedSize += cachedPadding;
+                _absoluteWidth = listSize.X / Scale;
+                _absoluteHeight = listSize.Y / Scale;
 
                 // Calculate member start offset
                 Vector2 startOffset = new Vector2();
 
                 if (alignAxis == 1)
-                    startOffset.Y = newSize.Y / 2f;
+                    startOffset.Y = listSize.Y / 2f;
                 else
-                    startOffset.X = -newSize.X / 2f;
+                    startOffset.X = -listSize.X / 2f;
 
                 UpdateMemberOffsets(startOffset, cachedPadding);
             }
 
             /// <summary>
-            /// Clamps minimum and maximum element sizes s.t min < max and both are always
-            /// greater than Vector2.Zero
+            /// Clamps minimum and maximum element sizes
             /// </summary>
             protected void ClampElementSizeRange()
             {
                 _absMinSize = Vector2.Max(Vector2.Zero, _absMinSize);
-                _absMaxSize = Vector2.Max(Vector2.Zero, _absMaxSize);
 
-                Vector2 newMin, newMax;
-                newMin = Vector2.Min(_absMinSize, _absMaxSize);
+                Vector2 newMax;
                 newMax = Vector2.Max(_absMinSize, _absMaxSize);
 
-                _absMinSize = newMin;
                 _absMaxSize = newMax;
             }
 
@@ -242,7 +224,7 @@ namespace RichHudFramework
             /// Calculates the chain's current size based on its sizing mode and the total
             /// size of its members (less padding).
             /// </summary>
-            protected Vector2 GetNewSize(Vector2 lastSize, Vector2 totalSize)
+            protected Vector2 GetListSize(Vector2 lastSize, Vector2 totalSize)
             {
                 if ((SizingMode & HudChainSizingModes.FitChainAlignAxis) > 0)
                 {
@@ -275,34 +257,34 @@ namespace RichHudFramework
                     right = (ParentAlignments)((int)ParentAlignments.Right * (2 - alignAxis)),
                     bitmask = left | right;
 
-                for (int n = 0; n < chainElements.Count; n++)
+                for (int n = 0; n < hudCollectionList.Count; n++)
                 {
-                    TElement element = chainElements[n].Element;
+                    TElement element = hudCollectionList[n].Element;
 
-                    if (element.Visible)
+                    // Calculate element size
+                    Vector2 elementSize = element.Size;
+
+                    // Enforce alignment restrictions
+                    element.ParentAlignment &= bitmask;
+                    element.ParentAlignment |= ParentAlignments.Inner;
+
+                    // Calculate element offset
+                    Vector2 newOffset = offset + (elementSize * alignMask * .5f);
+
+                    if ((element.ParentAlignment & left) == left)
                     {
-                        // Calculate element size
-                        Vector2 elementSize = element.Size;
+                        newOffset += padding * offMask * .5f;
+                    }
+                    else if ((element.ParentAlignment & right) == right)
+                    {
+                        newOffset -= padding * offMask * .5f;
+                    }
 
-                        // Enforce alignment restrictions
-                        element.ParentAlignment &= bitmask;
-                        element.ParentAlignment |= ParentAlignments.Inner;
+                    // Apply changes
+                    element.Offset = newOffset;
 
-                        // Calculate element offset
-                        Vector2 newOffset = offset + (elementSize * alignMask * .5f);
-
-                        if ((element.ParentAlignment & left) == left)
-                        {
-                            newOffset += padding * offMask * .5f;
-                        }
-                        else if ((element.ParentAlignment & right) == right)
-                        {
-                            newOffset -= padding * offMask * .5f;
-                        }
-
-                        // Apply changes
-                        element.Offset = newOffset;
-
+                    if (ParentUtils.IsSetVisible(element))
+                    {
                         // Move offset down for the next element
                         elementSize[alignAxis] += Spacing;
                         offset += elementSize * alignMask;
@@ -318,27 +300,23 @@ namespace RichHudFramework
                 Vector2 minSize = MemberMinSize,
                     maxSize = MemberMaxSize;
 
-                for (int n = 0; n < chainElements.Count; n++)
+                for (int n = 0; n < hudCollectionList.Count; n++)
                 {
-                    TElement element = chainElements[n].Element;
+                    TElement element = hudCollectionList[n].Element;
+                    Vector2 elementSize = element.Size;
 
-                    if (element.Visible)
-                    {
-                        Vector2 elementSize = element.Size;
+                    // Adjust element size based on sizing mode
+                    if ((SizingMode & HudChainSizingModes.FitMembersOffAxis) > 0)
+                        elementSize[offAxis] = maxSize[offAxis];
+                    else if ((SizingMode & HudChainSizingModes.ClampMembersOffAxis) > 0)
+                        elementSize[offAxis] = MathHelper.Clamp(elementSize[offAxis], minSize[offAxis], maxSize[offAxis]);
 
-                        // Adjust element size based on sizing mode
-                        if ((SizingMode & HudChainSizingModes.FitMembersOffAxis) > 0)
-                            elementSize[offAxis] = maxSize[offAxis];
-                        else if ((SizingMode & HudChainSizingModes.ClampMembersOffAxis) > 0)
-                            elementSize[offAxis] = MathHelper.Clamp(elementSize[offAxis], minSize[offAxis], maxSize[offAxis]);
+                    if ((SizingMode & HudChainSizingModes.FitMembersAlignAxis) > 0)
+                        elementSize[alignAxis] = maxSize[alignAxis];
+                    else if ((SizingMode & HudChainSizingModes.ClampMembersAlignAxis) > 0)
+                        elementSize[alignAxis] = MathHelper.Clamp(elementSize[alignAxis], minSize[alignAxis], maxSize[alignAxis]);
 
-                        if ((SizingMode & HudChainSizingModes.FitMembersAlignAxis) > 0)
-                            elementSize[alignAxis] = maxSize[alignAxis];
-                        else if ((SizingMode & HudChainSizingModes.ClampMembersAlignAxis) > 0)
-                            elementSize[alignAxis] = MathHelper.Clamp(elementSize[alignAxis], minSize[alignAxis], maxSize[alignAxis]);
-
-                        element.Size = elementSize;
-                    }
+                    element.Size = elementSize;
                 }
             }
 
@@ -350,11 +328,11 @@ namespace RichHudFramework
             {
                 Vector2 newSize = new Vector2();
 
-                for (int n = 0; n < chainElements.Count; n++)
+                for (int n = 0; n < hudCollectionList.Count; n++)
                 {
-                    TElement element = chainElements[n].Element;
-
-                    if (element.Visible)
+                    TElement element = hudCollectionList[n].Element;
+                    
+                    if (ParentUtils.IsSetVisible(element))
                     {
                         Vector2 elementSize = element.Size;
 

@@ -4,8 +4,6 @@ using VRage;
 using VRageMath;
 using ApiMemberAccessor = System.Func<object, int, object>;
 using FloatProp = VRage.MyTuple<System.Func<float>, System.Action<float>>;
-using HudDrawDelegate = System.Func<object, object>;
-using HudLayoutDelegate = System.Func<bool, bool>;
 using HudSpaceDelegate = System.Func<VRage.MyTuple<bool, float, VRageMath.MatrixD>>;
 using RichStringMembers = VRage.MyTuple<System.Text.StringBuilder, VRage.MyTuple<byte, float, VRageMath.Vector2I, VRageMath.Color>>;
 using Vec2Prop = VRage.MyTuple<System.Func<VRageMath.Vector2>, System.Action<VRageMath.Vector2>>;
@@ -14,20 +12,13 @@ namespace RichHudFramework
 {
     using Client;
     using CursorMembers = MyTuple<
-        Func<bool>, // Visible
-        Func<bool>, // IsCaptured
-        Func<Vector2>, // Position
-        Func<Vector3D>, // WorldPos
         Func<HudSpaceDelegate, bool>, // IsCapturingSpace
-        MyTuple<
-            Func<float, HudSpaceDelegate, bool>, // TryCaptureHudSpace
-            Func<object, bool>, // IsCapturing
-            Func<object, bool>, // TryCapture
-            Func<object, bool>, // TryRelease
-            ApiMemberAccessor // GetOrSetMember
-        >
+        Func<float, HudSpaceDelegate, bool>, // TryCaptureHudSpace
+        Func<ApiMemberAccessor, bool>, // IsCapturing
+        Func<ApiMemberAccessor, bool>, // TryCapture
+        Func<ApiMemberAccessor, bool>, // TryRelease
+        ApiMemberAccessor // GetOrSetMember
     >;
-    using HudInputDelegate = Func<Vector3, HudSpaceDelegate, MyTuple<Vector3, HudSpaceDelegate>>;
     using TextBoardMembers = MyTuple<
         // TextBuilderMembers
         MyTuple<
@@ -54,12 +45,12 @@ namespace RichHudFramework
             Action // Unregister
         >;
         using HudUpdateAccessors = MyTuple<
-            ushort, // ZOffset
-            byte, // Depth
-            HudInputDelegate, // DepthTest
-            HudInputDelegate, // HandleInput
-            HudLayoutDelegate, // BeforeLayout
-            HudDrawDelegate // BeforeDraw
+            ApiMemberAccessor,
+            MyTuple<Func<ushort>, Func<Vector3D>>, // ZOffset + GetOrigin
+            Action, // DepthTest
+            Action, // HandleInput
+            Action<bool>, // BeforeLayout
+            Action // BeforeDraw
         >;
 
         public sealed partial class HudMain : RichHudClient.ApiModule<HudClientMembers>
@@ -102,11 +93,11 @@ namespace RichHudFramework
                     object value = Instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.ClipBoard);
 
                     if (value != null)
-                        return new RichText(value as IList<RichStringMembers>);
+                        return new RichText(value as List<RichStringMembers>);
                     else
                         return default(RichText);
                 }
-                set { Instance.GetOrSetMemberFunc(value.ApiData, (int)HudMainAccessors.ClipBoard); }
+                set { Instance.GetOrSetMemberFunc(value.apiData, (int)HudMainAccessors.ClipBoard); }
             }
 
             /// <summary>
@@ -169,7 +160,7 @@ namespace RichHudFramework
             private static HudMain _instance;
 
             private readonly HudClientRoot root;
-            private readonly ICursor cursor;
+            private readonly HudCursor cursor;
             private bool enableCursorLast, refreshLast;
 
             private readonly Func<TextBoardMembers> GetTextBoardDataFunc;
@@ -178,6 +169,10 @@ namespace RichHudFramework
 
             private HudMain() : base(ApiModuleTypes.HudMain, false, true)
             {
+                if (_instance != null)
+                    throw new Exception("Only one instance of HudMain can exist at any give time!");
+
+                _instance = this;
                 var members = GetApiData();
 
                 cursor = new HudCursor(members.Item1);
@@ -189,28 +184,29 @@ namespace RichHudFramework
 
                 // Register update delegate
                 GetOrSetMemberFunc(new Action<List<HudUpdateAccessors>, byte>(root.GetUpdateAccessors), (int)HudMainAccessors.GetUpdateAccessors);
+
+                root.CustomDrawAction = HudMasterDraw;
+                UpdateCache();
             }
 
             private static void Init()
             {
                 if (_instance == null)
-                {
-                    _instance = new HudMain();
-                    _instance.root.CustomDrawAction = _instance.HudMasterDraw;
-                    _instance.UpdateCache();
-                }
-            }
-
-            private void HudMasterDraw()
-            {
-                UpdateCache();
+                    new HudMain();
             }
 
             /// <summary>
             /// Updates cached values used to render UI elements.
             /// </summary>
+            private void HudMasterDraw()
+            {
+                UpdateCache();
+            }
+
             private void UpdateCache()
             {
+                cursor.Update();
+
                 ScreenWidth = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenWidth);
                 ScreenHeight = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenHeight);
                 AspectRatio = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.AspectRatio);
@@ -286,17 +282,44 @@ namespace RichHudFramework
             /// <summary>
             /// Root UI element for the client. Registered directly to master root.
             /// </summary>
-            private class HudClientRoot : HudParentBase
+            private class HudClientRoot : HudParentBase, IReadOnlyHudSpaceNode
             {
                 public override bool Visible => true;
+
+                public bool DrawCursorInHudSpace { get; }
+
+                public Vector3 CursorPos { get; private set; }
+
+                public HudSpaceDelegate GetHudSpaceFunc { get; }
+
+                public MatrixD PlaneToWorld { get; private set; }
+
+                public Func<MatrixD> UpdateMatrixFunc { get; }
+
+                public Func<Vector3D> GetNodeOriginFunc { get; }
+
+                public bool IsInFront { get; }
+
+                public bool IsFacingCamera { get; }
 
                 public Action CustomDrawAction;
 
                 public HudClientRoot()
-                { }
-
-                protected override void Draw(object matrix)
                 {
+                    DrawCursorInHudSpace = true;
+                    HudSpace = this;
+                    IsInFront = true;
+                    IsFacingCamera = true;
+
+                    GetHudSpaceFunc = _instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceFunc) as HudSpaceDelegate;
+                    GetNodeOriginFunc = _instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceOriginFunc) as Func<Vector3D>;
+                }
+
+                protected override void Layout()
+                {
+                    PlaneToWorld = PixelToWorld;
+                    CursorPos = new Vector3(Cursor.ScreenPos.X, Cursor.ScreenPos.Y, 0f);
+
                     CustomDrawAction?.Invoke();
                 }
             }

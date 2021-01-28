@@ -17,12 +17,17 @@ namespace RichHudFramework.UI
         /// <summary>
         /// Invoked when a member of the list is selected.
         /// </summary>
-        public event EventHandler OnSelectionChanged { add { listBox.OnSelectionChanged += value; } remove { listBox.OnSelectionChanged -= value; } }
+        public event EventHandler SelectionChanged { add { listBox.SelectionChanged += value; } remove { listBox.SelectionChanged -= value; } }
 
         /// <summary>
         /// List of entries in the dropdown.
         /// </summary>
         public IReadOnlyList<ListBoxEntry<T>> ListEntries => listBox.ListEntries;
+
+        /// <summary>
+        /// Read-only collection of list entries.
+        /// </summary>
+        public IReadOnlyHudCollection<ListBoxEntry<T>, LabelButton> HudCollection => listBox.HudCollection;
 
         /// <summary>
         /// Used to allow the addition of list entries using collection-initializer syntax in
@@ -117,12 +122,11 @@ namespace RichHudFramework.UI
 
         public HudElementBase Display => display;
 
-        public readonly ListBox<T> listBox;
-
+        protected readonly ListBox<T> listBox;
         protected readonly DropdownDisplay display;
         protected readonly TexturedBox highlight;
 
-        public Dropdown(HudParentBase parent = null) : base(parent)
+        public Dropdown(HudParentBase parent) : base(parent)
         {
             display = new DropdownDisplay(this)
             {
@@ -150,9 +154,12 @@ namespace RichHudFramework.UI
 
             Size = new Vector2(331f, 43f);
 
-            display.MouseInput.OnLeftClick += ToggleList;
-            OnSelectionChanged += UpdateDisplay;
+            display.MouseInput.LeftClicked += ToggleList;
+            SelectionChanged += UpdateDisplay;
         }
+
+        public Dropdown() : this(null)
+        { }
 
         protected override void HandleInput(Vector2 cursorPos)
         {
@@ -181,12 +188,12 @@ namespace RichHudFramework.UI
                 CloseList();
         }
 
-        private void OpenList()
+        public void OpenList()
         {
             listBox.Visible = true;
         }
 
-        private void CloseList()
+        public void CloseList()
         {
             listBox.Visible = false;
         }
@@ -217,6 +224,12 @@ namespace RichHudFramework.UI
             listBox.RemoveAt(index);
 
         /// <summary>
+        /// Removes the member at the given index from the dropdown.
+        /// </summary>
+        public bool Remove(ListBoxEntry<T> entry) =>
+            listBox.Remove(entry);
+
+        /// <summary>
         /// Removes the specified range of indices from the dropdown.
         /// </summary>
         public void RemoveRange(int index, int count) =>
@@ -227,6 +240,12 @@ namespace RichHudFramework.UI
         /// </summary>
         public void ClearEntries() =>
             listBox.ClearEntries();
+
+        /// <summary>
+        /// Sets the selection to the member associated with the given object.
+        /// </summary>
+        public void SetSelectionAt(int index) =>
+            listBox.SetSelectionAt(index);
 
         /// <summary>
         /// Sets the selection to the member associated with the given object.
@@ -306,7 +325,7 @@ namespace RichHudFramework.UI
                 {
                     SizingMode = HudChainSizingModes.FitMembersOffAxis | HudChainSizingModes.FitChainBoth,
                     DimAlignment = DimAlignments.Height | DimAlignments.IgnorePadding,
-                    ChainContainer = { name, divider, arrow }
+                    CollectionContainer = { name, divider, arrow }
                 };
 
                 mouseInput = new MouseInputElement(this) 

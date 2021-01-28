@@ -7,6 +7,7 @@ namespace RichHudFramework.UI
 {
     using Client;
     using Server;
+    using Internal;
 
     /// <summary>
     /// A clickable box. Doesn't render any textures or text. Must be used in conjunction with other elements.
@@ -17,32 +18,32 @@ namespace RichHudFramework.UI
         /// <summary>
         /// Invoked when the cursor enters the element's bounds
         /// </summary>
-        public event EventHandler OnCursorEnter;
+        public event EventHandler CursorEntered;
 
         /// <summary>
         /// Invoked when the cursor leaves the element's bounds
         /// </summary>
-        public event EventHandler OnCursorExit;
+        public event EventHandler CursorExited;
 
         /// <summary>
         /// Invoked when the element is clicked with the left mouse button
         /// </summary>
-        public event EventHandler OnLeftClick;
+        public event EventHandler LeftClicked;
 
         /// <summary>
         /// Invoked when the left click is released
         /// </summary>
-        public event EventHandler OnLeftRelease;
+        public event EventHandler LeftReleased;
 
         /// <summary>
         /// Invoked when the element is clicked with the right mouse button
         /// </summary>
-        public event EventHandler OnRightClick;
+        public event EventHandler RightClicked;
 
         /// <summary>
         /// Invoked when the right click is released
         /// </summary>
-        public event EventHandler OnRightRelease;
+        public event EventHandler RightReleased;
 
         /// <summary>
         /// Indicates whether or not the cursor is currently over this element.
@@ -72,7 +73,7 @@ namespace RichHudFramework.UI
         private bool mouseCursorEntered;
         private bool hasFocus;
 
-        public MouseInputElement(HudParentBase parent = null) : base(parent)
+        public MouseInputElement(HudParentBase parent) : base(parent)
         {
             UseCursor = true;
             ShareCursor = true;
@@ -80,61 +81,37 @@ namespace RichHudFramework.UI
             DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding;
         }
 
+        public MouseInputElement() : this(null)
+        { }
+
         /// <summary>
         /// Clears all subscribers to mouse input events.
         /// </summary>
         public void ClearSubscribers()
         {
-            OnCursorEnter = null;
-            OnCursorExit = null;
-            OnLeftClick = null;
-            OnLeftRelease = null;
-            OnRightClick = null;
-            OnRightRelease = null;
+            CursorEntered = null;
+            CursorExited = null;
+            LeftClicked = null;
+            LeftReleased = null;
+            RightClicked = null;
+            RightReleased = null;
         }
 
-        protected override MyTuple<Vector3, HudSpaceDelegate> InputDepth(Vector3 cursorPos, HudSpaceDelegate GetHudSpaceFunc)
+        protected override void InputDepth()
         {
-            if (Visible)
+            if (UseCursor && Visible && (HudSpace?.IsFacingCamera ?? false))
             {
-                if (UseCursor)
-                {
-                    Vector2 offset = Vector2.Max(cachedSize, new Vector2(minMouseBounds)) / 2f;
-                    BoundingBox2 box = new BoundingBox2(cachedPosition - offset, cachedPosition + offset);
-                    mouseInBounds = box.Contains(new Vector2(cursorPos.X, cursorPos.Y)) == ContainmentType.Contains
+                Vector3 cursorPos = HudSpace.CursorPos;
+                Vector2 offset = Vector2.Max(cachedSize, new Vector2(minMouseBounds)) / 2f;
+                BoundingBox2 box = new BoundingBox2(cachedPosition - offset, cachedPosition + offset);
+                mouseInBounds = box.Contains(new Vector2(cursorPos.X, cursorPos.Y)) == ContainmentType.Contains
                         || (IsLeftClicked || IsRightClicked);
 
-                    if (mouseInBounds)
-                        HudMain.Cursor.TryCaptureHudSpace(cursorPos.Z, GetHudSpaceFunc);
-                }
-            }
-
-            return new MyTuple<Vector3, HudSpaceDelegate>(cursorPos, GetHudSpaceFunc);
-        }
-
-        protected override MyTuple<Vector3, HudSpaceDelegate> BeginInput(Vector3 cursorPos, HudSpaceDelegate GetHudSpaceFunc)
-        {
-            if (Visible)
-            {
-                if (UseCursor && mouseInBounds && !HudMain.Cursor.IsCaptured && HudMain.Cursor.IsCapturingSpace(GetHudSpaceFunc))
-                {
-                    _isMousedOver = mouseInBounds;
-
-                    HandleInput(new Vector2(cursorPos.X, cursorPos.Y));
-
-                    if (!ShareCursor)
-                        HudMain.Cursor.Capture(this);
-                }
-                else
-                {
-                    _isMousedOver = false;
-                    HandleInput(new Vector2(cursorPos.X, cursorPos.Y));
-                }
+                if (mouseInBounds)
+                    HudMain.Cursor.TryCaptureHudSpace(cursorPos.Z, HudSpace.GetHudSpaceFunc);
             }
             else
-                _isMousedOver = false;
-
-            return new MyTuple<Vector3, HudSpaceDelegate>(cursorPos, GetHudSpaceFunc);
+                mouseInBounds = false;
         }
 
         protected override void HandleInput(Vector2 cursorPos)
@@ -144,12 +121,12 @@ namespace RichHudFramework.UI
                 if (!mouseCursorEntered)
                 {
                     mouseCursorEntered = true;
-                    OnCursorEnter?.Invoke(_parent, EventArgs.Empty);
+                    CursorEntered?.Invoke(_parent, EventArgs.Empty);
                 }
 
                 if (SharedBinds.LeftButton.IsNewPressed)
                 {
-                    OnLeftClick?.Invoke(_parent, EventArgs.Empty);
+                    LeftClicked?.Invoke(_parent, EventArgs.Empty);
                     HasFocus = true;
                     IsLeftClicked = true;
                     IsNewLeftClicked = true;
@@ -159,7 +136,7 @@ namespace RichHudFramework.UI
 
                 if (SharedBinds.RightButton.IsNewPressed)
                 {
-                    OnRightClick?.Invoke(_parent, EventArgs.Empty);
+                    RightClicked?.Invoke(_parent, EventArgs.Empty);
                     HasFocus = true;
                     IsRightClicked = true;
                     IsNewRightClicked = true;
@@ -172,7 +149,7 @@ namespace RichHudFramework.UI
                 if (mouseCursorEntered)
                 {
                     mouseCursorEntered = false;
-                    OnCursorExit?.Invoke(_parent, EventArgs.Empty);
+                    CursorExited?.Invoke(_parent, EventArgs.Empty);
                 }
 
                 if (HasFocus && (SharedBinds.LeftButton.IsNewPressed || SharedBinds.RightButton.IsNewPressed))
@@ -184,13 +161,13 @@ namespace RichHudFramework.UI
 
             if (!SharedBinds.LeftButton.IsPressed && IsLeftClicked)
             {
-                OnLeftRelease?.Invoke(_parent, EventArgs.Empty);
+                LeftReleased?.Invoke(_parent, EventArgs.Empty);
                 IsLeftClicked = false;
             }
 
             if (!SharedBinds.RightButton.IsPressed && IsRightClicked)
             {
-                OnRightRelease?.Invoke(_parent, EventArgs.Empty);
+                RightReleased?.Invoke(_parent, EventArgs.Empty);
                 IsRightClicked = false;
             }
         }

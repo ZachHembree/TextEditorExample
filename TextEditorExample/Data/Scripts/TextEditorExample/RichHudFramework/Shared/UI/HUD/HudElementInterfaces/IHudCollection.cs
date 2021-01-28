@@ -6,41 +6,62 @@ namespace RichHudFramework
     namespace UI
     {
         /// <summary>
-        /// Interface for UI elements that support child elments using containers.
+        /// Read-only interface for UI elements that support child elments using containers.
         /// </summary>
-        public interface IHudCollection<TElementContainer, TElement> : IReadOnlyList<TElementContainer>, ICollection<TElementContainer>
+        public interface IReadOnlyHudCollection<TElementContainer, TElement> : IReadOnlyList<TElementContainer>
             where TElementContainer : IHudElementContainer<TElement>, new()
-            where TElement : HudElementBase
+            where TElement : HudNodeBase
         {
             /// <summary>
             /// UI elements in the collection
             /// </summary>
-            IReadOnlyList<TElementContainer> ChainEntries { get; }
+            IReadOnlyList<TElementContainer> Collection { get; }
 
             /// <summary>
-            /// Adds an element of type <see cref="TElement"/> to the chain.
-            /// </summary>
-            void Add(TElement element);
-
-            /// <summary>
-            /// Add the given range to the end of the chain.
-            /// </summary>
-            void AddRange(IReadOnlyList<TElementContainer> newChainEntries);
-
-            /// <summary>
-            /// Finds the chain member that meets the conditions required by the predicate.
+            /// Finds the collection member that meets the conditions required by the predicate.
             /// </summary>
             TElementContainer Find(Func<TElementContainer, bool> predicate);
 
             /// <summary>
-            /// Finds the index of the chain member that meets the conditions required by the predicate.
+            /// Finds the index of the collection member that meets the conditions required by the predicate.
             /// </summary>
             int FindIndex(Func<TElementContainer, bool> predicate);
+        }
+
+        /// <summary>
+        /// Read-only interface for UI elements that support child elments using containers.
+        /// </summary>
+        public interface IReadOnlyHudCollection<TElementContainer> : IReadOnlyHudCollection<TElementContainer, HudElementBase>
+            where TElementContainer : IHudElementContainer<HudElementBase>, new()
+        { }
+
+        /// <summary>
+        /// Read-only interface for UI elements that support child elments using containers.
+        /// </summary>
+        public interface IReadOnlyHudCollection : IReadOnlyHudCollection<HudElementContainer<HudElementBase>, HudElementBase>
+        { }
+
+        /// <summary>
+        /// Interface for UI elements that support child elments using containers.
+        /// </summary>
+        public interface IHudCollection<TElementContainer, TElement> : IReadOnlyHudCollection<TElementContainer, TElement>
+            where TElementContainer : IHudElementContainer<TElement>, new()
+            where TElement : HudNodeBase
+        {
+            /// <summary>
+            /// Adds an element of type <see cref="TElement"/> to the collection.
+            /// </summary>
+            void Add(TElement element);
 
             /// <summary>
-            /// Adds an element of type <see cref="TElement"/> at the given index.
+            /// Adds an element of type <see cref="TElementContainer"/> to the collection.
             /// </summary>
-            void Insert(int index, TElement element);
+            void Add(TElementContainer element);
+
+            /// <summary>
+            /// Add the given range to the end of the collection.
+            /// </summary>
+            void AddRange(IReadOnlyList<TElementContainer> newContainers);
 
             /// <summary>
             /// Adds an element of type <see cref="TElementContainer"/> at the given index.
@@ -48,44 +69,54 @@ namespace RichHudFramework
             void Insert(int index, TElementContainer container);
 
             /// <summary>
-            /// Insert the given range into the chain.
+            /// Insert the given range into the collection.
             /// </summary>
-            void InsertRange(int index, IReadOnlyList<TElementContainer> newChainEntries);
+            void InsertRange(int index, IReadOnlyList<TElementContainer> newContainers);
+
+            /// <summary>
+            /// Removes the specified element from the collection.
+            /// </summary>
+            /// <param name="fast">Prevents registration from triggering a draw list
+            /// update. Meant to be used in conjunction with pooled elements being
+            /// unregistered/reregistered to the same parent.</param>
+            bool Remove(TElementContainer collectionElement, bool fast);
 
             /// <summary>
             /// Removes the collection member that meets the conditions required by the predicate.
             /// </summary>
-            void Remove(Func<TElement, bool> predicate);
+            /// <param name="fast">Prevents registration from triggering a draw list
+            /// update. Meant to be used in conjunction with pooled elements being
+            /// unregistered/reregistered to the same parent.</param>
+            bool Remove(Func<TElementContainer, bool> predicate, bool fast = false);
 
             /// <summary>
-            /// Removes the collection member that meets the conditions required by the predicate.
+            /// Remove the collection element at the given index.
             /// </summary>
-            void Remove(Func<TElementContainer, bool> predicate);
+            /// <param name="fast">Prevents registration from triggering a draw list
+            /// update. Meant to be used in conjunction with pooled elements being
+            /// unregistered/reregistered to the same parent.</param>
+            bool RemoveAt(int index, bool fast = false);
 
             /// <summary>
-            /// Removes the specified element from the chain.
+            /// Removes the specfied range from the collection. Normal child elements not affected.
             /// </summary>
-            void Remove(TElement chainElement);
-
-            /// <summary>
-            /// Remove the chain element at the given index.
-            /// </summary>
-            void RemoveAt(int index);
-
-            /// <summary>
-            /// Removes the specfied range from the chain. Normal child elements not affected.
-            /// </summary>
-            void RemoveRange(int index, int count);
-
-            /// <summary>
-            /// Sorts the entires using the default comparer.
-            /// </summary>
-            void Sort();
-
-            /// <summary>
-            /// Sorts the entries using the given comparer.
-            /// </summary>
-            void Sort(Func<TElementContainer, TElementContainer, int> comparison);
+            /// <param name="fast">Prevents registration from triggering a draw list
+            /// update. Meant to be used in conjunction with pooled elements being
+            /// unregistered/reregistered to the same parent.</param>
+            void RemoveRange(int index, int count, bool fast = false);
         }
+
+        /// <summary>
+        /// Read-only interface for UI elements that support child elments using containers.
+        /// </summary>
+        public interface IHudCollection<TElementContainer> : IHudCollection<TElementContainer, HudElementBase>
+            where TElementContainer : IHudElementContainer<HudElementBase>, new()
+        { }
+
+        /// <summary>
+        /// Read-only interface for UI elements that support child elments using containers.
+        /// </summary>
+        public interface IHudCollection : IHudCollection<HudElementContainer<HudElementBase>, HudElementBase>
+        { }
     }
 }

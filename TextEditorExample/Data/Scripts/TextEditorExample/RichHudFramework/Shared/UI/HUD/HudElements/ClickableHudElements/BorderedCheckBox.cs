@@ -12,13 +12,13 @@ namespace RichHudFramework.UI.Server
         /// <summary>
         /// Indicates whether or not the box is checked.
         /// </summary>
-        public bool BoxChecked { get { return box.Visible; } set { box.Visible = value; } }
+        public bool IsBoxChecked { get { return box.Visible; } set { box.Visible = value; } }
 
         private readonly TexturedBox box, highlight;
 
         private static readonly Color BoxColor = new Color(114, 121, 139);
 
-        public BorderedCheckBox(HudParentBase parent = null) : base(parent)
+        public BorderedCheckBox(HudParentBase parent) : base(parent)
         {
             var border = new BorderBox(this)
             {
@@ -46,12 +46,15 @@ namespace RichHudFramework.UI.Server
             highlightColor = new Color(50, 60, 70);
             highlightEnabled = false;
 
-            MouseInput.OnLeftClick += ToggleValue;
+            MouseInput.LeftClicked += ToggleValue;
         }
+
+        public BorderedCheckBox() : this(null)
+        { }
 
         private void ToggleValue(object sender, EventArgs args)
         {
-            BoxChecked = !BoxChecked;
+            IsBoxChecked = !IsBoxChecked;
         }
 
         protected override void HandleInput(Vector2 cursorPos)
