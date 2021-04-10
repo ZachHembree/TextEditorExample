@@ -2,6 +2,7 @@
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRageMath;
 using VRage.Input;
 using RichHudFramework.Client;
 using RichHudFramework.Internal;
@@ -15,23 +16,14 @@ namespace TextEditorExample
     /// Example Text Editor Mod used to demonstrate the usage of the Rich HUD Framework.
     /// </summary>
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
-    public class TextEditorMain : ModBase
+    public class TextEditorMain : MySessionComponentBase
     {
         private TextEditor textEditor;
         private IBindGroup editorBinds;
 
-        public TextEditorMain() : base(false, true)
+        public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            ExceptionHandler.ModName = "Text Editor Example"; // The name of the mod as it will appear in any chat messages, popups or error messages
-            LogIO.FileName = "editorLog.txt"; // The name of the log file in local storage
-
-            ExceptionHandler.PromptForReload = true; // I generally prefer that the user be prompted before allowing the mod to reload
-            ExceptionHandler.RecoveryLimit = 4; // The number of times the mod will be allowed to reload as a result of an unhandled exception
-        }
-
-        protected override void AfterInit()
-        {
-            RichHudClient.Init(ExceptionHandler.ModName, HudInit, Reload);
+            RichHudClient.Init("Text Editor Example", HudInit, ClientReset);
         }
 
         private void HudInit()
@@ -50,80 +42,46 @@ namespace TextEditorExample
                 { "editorToggle", MyKeys.Home }
             });
 
-            RichHudTerminal.Root.Enabled = true;
-            RichHudTerminal.Root.Add(new ControlPage()
-            {
-                CategoryContainer =
-                {
-                    new ControlCategory()
-                    {
-                        new ControlTile()
-                        {
-                            new TerminalCheckbox(),
-                            new TerminalButton()
-                            {
-                                Name = "Toggle Text Editor",
-                                ControlChangedHandler = (sender, args) => ToggleEditor(),
-                            },
-                            new TerminalDropdown<int>()
-                            {
-                                Name = "Example Dropdown",
-                                List = 
-                                {
-                                    { "Entry 1", 1 },
-                                    { "Entry 2", 2 },
-                                    { "Entry 3", 3 },
-                                    { "Entry 4", 4 },
-                                    { "Entry 5", 5 }
-                                }
-                            }
-                        },
-                        new ControlTile()
-                        {
-                            new TerminalColorPicker(),
-                        },
-                    },
-                    new ControlCategory()
-                    {
-                        new ControlTile()
-                        {
-                            new TerminalList<int>()
-                            {
-                                Name = "Test List",
-                                List =
-                                {
-                                    { "Entry 1", 1 },
-                                    { "Entry 2", 2 },
-                                    { "Entry 3", 3 },
-                                    { "Entry 4", 4 },
-                                    { "Entry 5", 5 }
-                                }
-                            },
-                        },
-                        new ControlTile()
-                        {
-                            new TerminalOnOffButton(),
-                            new TerminalOnOffButton(),
-                            new TerminalSlider(),
-                        },
-                        new ControlTile()
-                        {
-                            new TerminalTextField()
-                        }
-                    }
-                },
-            });
-
-            editorBinds[0].OnNewPress += ToggleEditor;
+            editorBinds[0].NewPressed += ToggleEditor;
         }
 
-        private void ToggleEditor() =>
-            textEditor.Visible = !textEditor.Visible;
-
-        public override void BeforeClose()
+        private void ToggleEditor()
         {
-            if (ExceptionHandler.Reloading)
-                RichHudClient.Reset(); //using reset like this could make the client reload twice
+            textEditor.Visible = !textEditor.Visible;
+            HudMain.EnableCursor = textEditor.Visible;
+        }
+
+        public override void Draw()
+        {
+            if (RichHudClient.Registered)
+            {
+                /* If you need to update framework members externally, then 
+                you'll need to make sure you don't start updating until your
+                mod client has been registered. */
+
+                // This will scale up the window for resolutions > 1080p to compensate for
+                // high dpi displays
+                textEditor.LocalScale = HudMain.ResScale;
+            }
+        }
+
+        private void ClientReset()
+        {
+            /* At this point, your client has been unregistered and all of 
+            your framework members will stop working.
+
+            This will be called in one of three cases:
+            1) The game session is unloading.
+            2) An unhandled exception has been thrown and caught on either the client
+            or on master.
+            3) RichHudClient.Reset() has been called manually.
+            */
+        }
+
+        private class TestWindow : WindowBase
+        {
+            public TestWindow() : base(HudMain.Root)
+            { }
         }
     }
 }
