@@ -31,7 +31,6 @@ namespace TextEditorExample
 
                 // Make the text smaller
                 Format = GlyphFormat.White.WithSize(0.8f);
-                FocusFormat = listBox.FocusFormat.WithSize(0.8f);
             }
         }
     }
