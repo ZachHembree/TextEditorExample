@@ -26,6 +26,7 @@ namespace TextEditorExample
                     Format = GlyphFormat.White,
                     VertCenterText = false, // This is a text editor; I don't want the text centered.
                     AutoResize = false, // Allows the text box size to be set manually (or via DimAlignment)
+                    ClearSelectionOnLoseFocus = false // Leaving this enabled creates problems when trying to reformat text
                 };
 
                 // These scroll bars will be used to control text scrolling via textboard text offset

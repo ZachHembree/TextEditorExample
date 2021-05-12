@@ -53,14 +53,15 @@ namespace TextEditorExample
         /// </summary>
         private void ChangeFormat()
         {
-            textBox.text.Format = toolBar.Format;
+            ITextBoard textBoard = textBox.text.TextBoard;
+            textBoard.Format = toolBar.Format;
 
-            // Apply new formatting to selected text range
+            // Apply new formatting to selected text range. This will completely overwrite the text 
+            // formatting of the selected range. Modifying it to only apply the last effect/setting
+            // used would require setting formatting per-character. I should probably add a function
+            // for that in the future, probably using some kind of bit mask.
             if (!textBox.text.SelectionEmpty)
-            {
-                ITextBoard textBoard = textBox.text.TextBoard;
-                textBoard.SetFormatting(textBox.text.SelectionStart, textBox.text.SelectionEnd, textBoard.Format);
-            }
+                textBoard.SetFormatting(textBox.text.SelectionStart, textBox.text.SelectionEnd, toolBar.Format);
         }
 
         /// <summary>
