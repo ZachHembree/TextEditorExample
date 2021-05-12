@@ -77,11 +77,5 @@ namespace TextEditorExample
             3) RichHudClient.Reset() has been called manually.
             */
         }
-
-        private class TestWindow : WindowBase
-        {
-            public TestWindow() : base(HudMain.Root)
-            { }
-        }
     }
 }
