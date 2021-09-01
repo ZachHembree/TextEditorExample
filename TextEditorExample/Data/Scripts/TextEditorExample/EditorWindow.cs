@@ -72,8 +72,10 @@ namespace TextEditorExample
             textBox.text.BuilderMode = toolBar.BulderMode;
         }
 
-        protected override void Draw()
+        protected override void Layout()
         {
+            base.Layout();
+
             // Set window minimum width to prevent it from becoming narrower than the toolbar's minimum width
             MinimumSize = new Vector2(Math.Max(toolBar.MinimumWidth, MinimumSize.X), MinimumSize.Y);
 
