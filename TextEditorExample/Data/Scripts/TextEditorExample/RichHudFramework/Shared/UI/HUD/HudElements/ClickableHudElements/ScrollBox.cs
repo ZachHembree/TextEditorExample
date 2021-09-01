@@ -33,16 +33,15 @@ namespace RichHudFramework.UI
                 if (value > Padding.X)
                     value -= Padding.X;
 
-                float scale = (LocalScale * parentScale);
-                _absoluteWidth = value / scale;
+                _size.X = value;
 
                 if (offAxis == 0)
                 {
                     if (value > 0f && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
-                        _absMaxSize.X = (value - scrollBarPadding) / scale;
+                        _absMaxSize.X = (value - scrollBarPadding);
                 }
                 else
-                    _absMinLengthInternal = _absoluteWidth;
+                    _absMinLengthInternal = _size.X;
             }
         }
 
@@ -56,16 +55,15 @@ namespace RichHudFramework.UI
                 if (value > Padding.Y)
                     value -= Padding.Y;
 
-                float scale = (LocalScale * parentScale);
-                _absoluteHeight = value / scale;
+                _size.Y = value;
 
                 if (offAxis == 1)
                 {
                     if (value > 0f && (SizingMode & (HudChainSizingModes.ClampMembersOffAxis | HudChainSizingModes.FitMembersOffAxis)) > 0)
-                        _absMaxSize.Y = (value - scrollBarPadding) / scale;
+                        _absMaxSize.Y = (value - scrollBarPadding);
                 }
                 else
-                    _absMinLengthInternal = _absoluteHeight;
+                    _absMinLengthInternal = _size.Y;
             }
         }
 
@@ -79,7 +77,7 @@ namespace RichHudFramework.UI
         /// <summary>
         /// Minimum total length (on the align axis) of visible members allowed in the scrollbox.
         /// </summary>
-        public float MinLength { get { return _absMinLength * (LocalScale * parentScale); } set { _absMinLength = value / (LocalScale * parentScale); } }
+        public float MinLength { get { return _absMinLength; } set { _absMinLength = value; } }
 
         /// <summary>
         /// Index of the first element in the visible range in the chain.
@@ -112,6 +110,12 @@ namespace RichHudFramework.UI
                 }
             }
         }
+
+        /// <summary>
+        /// Range of elements including elements immediately before and after the logical visible
+        /// range to allow for clipping.
+        /// </summary>
+        public Vector2I ClipRange => new Vector2I(_start, _end);
 
         /// <summary>
         /// Position of the first visible element as it appears in the UI. Does not correspond to actual index.
@@ -153,7 +157,15 @@ namespace RichHudFramework.UI
         /// </summary>
         public Color SliderHighlight { get { return ScrollBar.slide.SliderHighlight; } set { ScrollBar.slide.SliderHighlight = value; } }
 
+        /// <summary>
+        /// If enabled scrolling using the scrollbar and mousewheel will be allowed
+        /// </summary>
         public bool EnableScrolling { get; set; }
+
+        /// <summary>
+        /// Enable/disable smooth scrolling and range clipping
+        /// </summary>
+        public bool UseSmoothScrolling { get; set; }
 
         public override bool AlignVertical
         {
@@ -213,6 +225,7 @@ namespace RichHudFramework.UI
             UseCursor = true;
             ShareCursor = false;
             EnableScrolling = true;
+            UseSmoothScrolling = true;
             ZOffset = 1;
         }
 
@@ -230,15 +243,23 @@ namespace RichHudFramework.UI
 
         protected override void HandleInput(Vector2 cursorPos)
         {
+            ScrollBar.MouseInput.Enabled = EnableScrolling;
+
             if (hudCollectionList.Count > 0 && EnableScrolling && (IsMousedOver || ScrollBar.IsMousedOver))
             {
-                if (SharedBinds.MousewheelUp.IsPressed)
+                if (UseSmoothScrolling)
                 {
-                    ScrollBar.Current -= hudCollectionList[_intEnd].Element.Size[alignAxis] + Spacing;
+                    if (SharedBinds.MousewheelUp.IsPressed)
+                        ScrollBar.Current -= hudCollectionList[_intEnd].Element.Size[alignAxis] + Spacing;
+                    else if (SharedBinds.MousewheelDown.IsPressed)
+                        ScrollBar.Current += hudCollectionList[_intStart].Element.Size[alignAxis] + Spacing;
                 }
-                else if (SharedBinds.MousewheelDown.IsPressed)
+                else
                 {
-                    ScrollBar.Current += hudCollectionList[_intStart].Element.Size[alignAxis] + Spacing;
+                    if (SharedBinds.MousewheelUp.IsPressed)
+                        Start--;
+                    else if (SharedBinds.MousewheelDown.IsPressed)
+                        End++;
                 }
             }
         }
@@ -253,8 +274,7 @@ namespace RichHudFramework.UI
             UpdateMemberSizes();
 
             // Get the list length
-            float scale = (LocalScale * parentScale),
-                rangeLength = Math.Max(_absMinLength, _absMinLengthInternal) * scale;
+            float rangeLength = Math.Max(_absMinLength, _absMinLengthInternal);
 
             // Update visible range
             float totalEnabledLength = 0f, scrollOffset = 0f;
@@ -266,24 +286,31 @@ namespace RichHudFramework.UI
                 visibleTotalSize = GetVisibleTotalSize(),
                 listSize = GetListSize(size - effectivePadding, visibleTotalSize);
 
-            if (hudCollectionList.Count > 0)
+            if (UseSmoothScrolling)
             {
-                hudCollectionList[_start].Element.Visible = true;
-                hudCollectionList[_end].Element.Visible = true;
+                if (hudCollectionList.Count > 0)
+                {
+                    hudCollectionList[_start].Element.Visible = true;
+                    hudCollectionList[_end].Element.Visible = true;
+                }
+            }
+            else
+            {
+                scrollOffset = 0f;
             }
 
             size = listSize;
             size[offAxis] += scrollBarPadding;
-            _absoluteWidth = size.X / scale;
-            _absoluteHeight = size.Y / scale;
+            _size = size;
 
             // Update scrollbar max bound and calculate offset for scrolling
-            ScrollBar.Max = Math.Max(totalEnabledLength - listSize[alignAxis], 0f);
+            ScrollBar.Current = (float)Math.Round(ScrollBar.Current, 6);
+            ScrollBar.Max = (float)Math.Round(Math.Max(totalEnabledLength - listSize[alignAxis], 0f), 6);
 
             // Update slider size
             float visRatio = Math.Max(listSize[alignAxis] / totalEnabledLength, 0f);
-            Vector2 sliderSize = ScrollBar.slide.BarSize;
 
+            Vector2 sliderSize = ScrollBar.slide.BarSize;
             sliderSize[alignAxis] = (Size[alignAxis] - ScrollBar.Padding[alignAxis]) * visRatio;
             ScrollBar.slide.SliderSize = sliderSize;
 
@@ -319,7 +346,7 @@ namespace RichHudFramework.UI
                 if (hudCollectionList[i].Enabled)
                 {
                     float elementSize = hudCollectionList[i].Element.Size[alignAxis],
-                        delta = (totalEnabledLength + elementSize) - scrollCurrent - length;
+                        delta = totalEnabledLength + elementSize - scrollCurrent - length;
 
                     // Get first enabled element
                     if (firstEnabled == -1)
@@ -383,26 +410,29 @@ namespace RichHudFramework.UI
             _start = _intStart;
             _end = _intEnd;
 
-            for (int i = _intStart - 1; i >= firstEnabled; i--)
+            if (UseSmoothScrolling)
             {
-                if (hudCollectionList[i].Enabled)
+                for (int i = _intStart - 1; i >= firstEnabled; i--)
                 {
-                    _start = i;
-                    break;
+                    if (hudCollectionList[i].Enabled)
+                    {
+                        _start = i;
+                        break;
+                    }
                 }
-            }
 
-            for (int i = _intEnd + 1; i < hudCollectionList.Count; i++)
-            {
-                if (hudCollectionList[i].Enabled)
+                for (int i = _intEnd + 1; i < hudCollectionList.Count; i++)
                 {
-                    _end = i;
-                    break;
+                    if (hudCollectionList[i].Enabled)
+                    {
+                        _end = i;
+                        break;
+                    }
                 }
-            }
 
-            if (_start != _intStart)
-                scrollOffset += hudCollectionList[_start].Element.Size[alignAxis] + spacing;
+                if (_start != _intStart)
+                    scrollOffset += hudCollectionList[_start].Element.Size[alignAxis] + spacing;
+            }
 
             VisStart = GetVisibleIndex(_intStart);
 
@@ -426,25 +456,37 @@ namespace RichHudFramework.UI
             return count;
         }
 
+        /// <summary>
+        /// Returns the shortest offset required to bring a member at the given index to either
+        /// end of the scrollbox.
+        /// </summary>
         private float GetMinScrollOffset(int index, bool getEnd)
         {
             if (hudCollectionList.Count > 0)
             {
                 firstEnabled = MathHelper.Clamp(firstEnabled, 0, hudCollectionList.Count - 1);
-                float offset, spacing = Spacing;
+
+                float elementSize,
+                    offset = .1f,
+                    spacing = Spacing;
 
                 if (getEnd)
-                    offset = -(cachedSize[alignAxis] - cachedPadding[alignAxis] + spacing);
+                    offset -= cachedSize[alignAxis] - cachedPadding[alignAxis] + spacing;
                 else
-                    offset = -(hudCollectionList[firstEnabled].Element.Size[alignAxis] + spacing);
+                {
+                    index--;
+                }
 
                 for (int i = 0; i <= index && i < hudCollectionList.Count; i++)
                 {
                     if (hudCollectionList[i].Enabled)
-                        offset += hudCollectionList[i].Element.Size[alignAxis] + spacing;
+                    {
+                        elementSize = hudCollectionList[i].Element.Size[alignAxis];
+                        offset += (elementSize + spacing);
+                    }
                 }
 
-                return Math.Max(offset, 0f);
+                return Math.Max((float)Math.Round(offset, 6), 0f);
             }
             else
                 return 0f;
@@ -455,11 +497,15 @@ namespace RichHudFramework.UI
             int preloadRange = Math.Max((End - Start) * 2, 10),
                 preloadStart = MathHelper.Clamp(Start - preloadRange, 0, hudCollectionList.Count - 1),
                 preloadCount = MathHelper.Clamp((End + preloadRange) - preloadStart, 0, hudCollectionList.Count - preloadStart);
+            HudElementStates memberFlags = HudElementStates.CanPreload;
+
+            if (UseSmoothScrolling)
+                memberFlags |= HudElementStates.IsSelectivelyMasked;
 
             NodeUtils.SetNodesState<TElementContainer, TElement>
                 (HudElementStates.CanPreload, true, hudCollectionList, 0, hudCollectionList.Count);
             NodeUtils.SetNodesState<TElementContainer, TElement>
-                (HudElementStates.CanPreload | HudElementStates.IsSelectivelyMasked, false, hudCollectionList, preloadStart, preloadCount);
+                (memberFlags, false, hudCollectionList, preloadStart, preloadCount);
 
             base.GetUpdateAccessors(UpdateActions, treeDepth);
         }
