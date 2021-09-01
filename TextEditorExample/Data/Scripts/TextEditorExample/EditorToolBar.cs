@@ -33,8 +33,8 @@ namespace TextEditorExample
             /// </summary>
             public GlyphFormat Format 
             { 
-            get { return _format; } 
-            set 
+                get { return _format; } 
+                set 
                 {
                     FontStyles style = value.FontStyle;
                     boldToggle.Selected = style.HasFlag(FontStyles.Bold);
