@@ -33,8 +33,8 @@ namespace TextEditorExample
             /// </summary>
             public GlyphFormat Format 
             { 
-            get { return _format; } 
-            set 
+                get { return _format; } 
+                set 
                 {
                     FontStyles style = value.FontStyle;
                     boldToggle.Selected = style.HasFlag(FontStyles.Bold);
@@ -128,6 +128,13 @@ namespace TextEditorExample
                     Text = "I",
                 };
 
+                /* HudChain is useful for organizing collections of elements into straight lines with regular spacing, 
+                 * either vertically horizontally. In this case, I'm organizing elements horizontally from left to right
+                 * in the same order indicated by the collection initializer below. 
+                 * 
+                 * HudChain and its related types, like ScrollBox and the SelectionBox types, are powerful tools for 
+                 * organizing UI elements, especially when used in conjunction with oneanother. 
+                 */
                 layout = new HudChain(false, this) // Set to alignVertical false to align the elements horizontally
                 {
                     // Automatically resize the height of the elements to match that of the chain and allow the chain to be

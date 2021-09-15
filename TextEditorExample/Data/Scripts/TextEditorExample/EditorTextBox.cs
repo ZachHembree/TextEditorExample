@@ -71,7 +71,7 @@ namespace TextEditorExample
 
             protected override void HandleInput(Vector2 cursorPos)
             {
-                /* TextBoard Offsets 101:
+                /* TextBoard Offsets:
                 
                 The TextBoard allows you to set an offset for the text being rendered starting from the
                 center of the element. Text outside the bounds of the element will not be drawn.
@@ -85,10 +85,6 @@ namespace TextEditorExample
                 
                 By default, the visible range of text will start at the first line on the first character.
                 It starts in the upper left hand corner.
-                
-                If you wanted to move to the last line to the top of the element, you'd need to set a Y-offset
-                of TextSize.Y - lineSize.Y. If you wanted to move the last character in a line to the right side
-                of the element, you'd set an X-offset of -charOffset.X + charSize.X / 2f.
                 */
 
                 ITextBoard textBoard = text.TextBoard;

@@ -30,8 +30,11 @@ namespace TextEditorExample
         {
             /* There are three(-ish) ways to register a HUD element to a parent element. By calling the parent's RegisterChild() method
              * and passing in the child element, by calling the child element's Register() method and passing in the parent or by
-             * passing the parent into the child's constructor. */
-            textEditor = new TextEditor(HudMain.Root)
+             * passing the parent into the child's constructor. 
+             
+             I'm using HighDpiRoot instead of Root to compensate for scaling at resolutions > 1080p.
+           */
+            textEditor = new TextEditor(HudMain.HighDpiRoot)
             { 
                 Visible = false, // I don't want this to be visible on init.
             };
@@ -58,10 +61,6 @@ namespace TextEditorExample
                 /* If you need to update framework members externally, then 
                 you'll need to make sure you don't start updating until your
                 mod client has been registered. */
-
-                // This will scale up the window for resolutions > 1080p to compensate for
-                // high dpi displays
-                textEditor.LocalScale = HudMain.ResScale;
             }
         }
 
