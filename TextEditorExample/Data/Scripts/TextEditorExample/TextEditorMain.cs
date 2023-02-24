@@ -1,14 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using RichHudFramework.Client;
+using RichHudFramework.Internal;
+using RichHudFramework.IO;
+using RichHudFramework.UI;
+using RichHudFramework.UI.Client;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRageMath;
 using VRage.Input;
-using RichHudFramework.Client;
-using RichHudFramework.Internal;
-using RichHudFramework.UI.Client;
-using RichHudFramework.UI;
-using RichHudFramework.IO;
+using VRageMath;
 
 namespace TextEditorExample
 {
@@ -35,12 +37,12 @@ namespace TextEditorExample
              I'm using HighDpiRoot instead of Root to compensate for scaling at resolutions > 1080p.
            */
             textEditor = new TextEditor(HudMain.HighDpiRoot)
-            { 
+            {
                 Visible = false, // I don't want this to be visible on init.
             };
 
             editorBinds = BindManager.GetOrCreateGroup("editorBinds");
-            editorBinds.RegisterBinds(new BindGroupInitializer() 
+            editorBinds.RegisterBinds(new BindGroupInitializer()
             {
                 { "editorToggle", MyKeys.Home }
             });
@@ -48,7 +50,7 @@ namespace TextEditorExample
             editorBinds[0].NewPressed += ToggleEditor;
         }
 
-        private void ToggleEditor()
+        private void ToggleEditor(object sender, EventArgs args)
         {
             textEditor.Visible = !textEditor.Visible;
             HudMain.EnableCursor = textEditor.Visible;
