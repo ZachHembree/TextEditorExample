@@ -5,6 +5,7 @@ using VRageMath;
 using System.Collections.Generic;
 using RichHudFramework.UI.Rendering;
 using System.Collections;
+using System.Reflection;
 
 namespace RichHudFramework.UI
 {
@@ -29,22 +30,35 @@ namespace RichHudFramework.UI
         /// <summary>
         /// Current selection. Null if empty.
         /// </summary>
-        public TElementContainer Selection => (SelectionIndex != -1 && Entries.Count > 0) ? Entries[SelectionIndex] : default(TElementContainer);
+        public TElementContainer Selection
+        {
+            get
+            {
+                if (Entries.Count == 0 || SelectionIndex < 0 || SelectionIndex >= Entries.Count)
+                {
+                    return default(TElementContainer);
+                }
+                else
+                {
+                    return Entries[SelectionIndex];
+                }
+            }
+        }
 
         /// <summary>
         /// Index of the current selection. -1 if empty.
         /// </summary>
-        public int SelectionIndex { get; protected set; }
+        public int SelectionIndex => MathHelper.Clamp(_selectionIndex, -1, Entries.Count - 1);
 
         /// <summary>
         /// Index of the highlighted entry
         /// </summary>
-        public int HighlightIndex { get; protected set; }
+        public int HighlightIndex => MathHelper.Clamp(_highlightIndex, 0, Entries.Count - 1);
 
         /// <summary>
         /// Index of the entry with input focus 
         /// </summary>
-        public int FocusIndex { get; protected set; }
+        public int FocusIndex => MathHelper.Clamp(_focusIndex, 0, Entries.Count - 1);
 
         /// <summary>
         /// If true, then the element is using the keyboard for scrolling
@@ -67,11 +81,14 @@ namespace RichHudFramework.UI
         public Vector2 ListPos { get; set; }
 
         protected Vector2 lastCursorPos;
+        private int _selectionIndex;
+        private int _highlightIndex;
+        private int _focusIndex;
 
         public ListInputElement(IReadOnlyHudCollection<TElementContainer, TElement> entries, HudElementBase parent = null) : base(parent)
         {
             Entries = entries;
-            SelectionIndex = -1;
+            _selectionIndex = -1;
         }
 
         public ListInputElement(HudChain<TElementContainer, TElement> parent = null) : this(parent, parent)
@@ -82,9 +99,12 @@ namespace RichHudFramework.UI
         /// </summary>
         public void SetSelectionAt(int index)
         {
-            SelectionIndex = MathHelper.Clamp(index, 0, Entries.Count - 1);
-            Selection.Enabled = true;
-            SelectionChanged?.Invoke(this, EventArgs.Empty);
+            if (index != _selectionIndex)
+            {
+                _selectionIndex = MathHelper.Clamp(index, 0, Entries.Count - 1);
+                Selection.Enabled = true;
+                SelectionChanged?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         /// <summary>
@@ -94,12 +114,53 @@ namespace RichHudFramework.UI
         {
             int index = Entries.FindIndex(x => member.Equals(x));
 
-            if (index != -1)
+            if (index != -1 && index != _selectionIndex)
             {
-                SelectionIndex = MathHelper.Clamp(index, 0, Entries.Count - 1);
+                _selectionIndex = MathHelper.Clamp(index, 0, Entries.Count - 1);
                 Selection.Enabled = true;
                 SelectionChanged?.Invoke(this, EventArgs.Empty);
             }
+        }
+
+        /// <summary>
+        /// Offsets selection index in the direction of the offset. If wrap == true, the index will wrap around
+        /// if the offset places it out of range.
+        /// </summary>
+        public void OffsetSelectionIndex(int offset, bool wrap = false)
+        {
+            int index = _selectionIndex,
+                dir = offset > 0 ? 1 : -1,
+                absOffset = Math.Abs(offset);
+
+            if (dir > 0)
+            {
+                for (int i = 0; i < absOffset; i++)
+                {
+                    if (wrap)
+                        index = (index + dir) % Entries.Count;
+                    else
+                        index = Math.Min(index + dir, Entries.Count - 1);
+
+                    index = FindFirstEnabled(index, wrap);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < absOffset; i++)
+                {
+                    if (wrap)
+                        index = (index + dir) % Entries.Count;
+                    else
+                        index = Math.Max(index + dir, 0);
+
+                    if (index < 0)
+                        index += Entries.Count;
+
+                    index = FindLastEnabled(index, wrap);
+                }
+            }
+
+            SetSelectionAt(index);
         }
 
         /// <summary>
@@ -107,7 +168,9 @@ namespace RichHudFramework.UI
         /// </summary>
         public void ClearSelection()
         {
-            SelectionIndex = -1;
+            _selectionIndex = -1;
+            _highlightIndex = 0;
+            _focusIndex = 0;
         }
 
         protected override void HandleInput(Vector2 cursorPos)
@@ -124,27 +187,44 @@ namespace RichHudFramework.UI
         /// </summary>
         protected virtual void UpdateSelectionInput(Vector2 cursorPos)
         {
-            HighlightIndex = MathHelper.Clamp(HighlightIndex, 0, Entries.Count - 1);
+            _selectionIndex = MathHelper.Clamp(_selectionIndex, -1, Entries.Count - 1);
+            _highlightIndex = MathHelper.Clamp(_highlightIndex, 0, Entries.Count - 1);
 
             // If using arrow keys to scroll, adjust the scrollbox's start/end indices
             if (KeyboardScroll)
                 // If using arrow keys to scroll, then the focus should follow the highlight
-                FocusIndex = HighlightIndex;
+                _focusIndex = _highlightIndex;
             else // Otherwise, focus index should follow the selection
-                FocusIndex = SelectionIndex;
+                _focusIndex = _selectionIndex;
 
             // Keyboard input
             if (HasFocus)
             {
                 if (SharedBinds.UpArrow.IsNewPressed || SharedBinds.UpArrow.IsPressedAndHeld)
                 {
-                    HighlightIndex--;
+                    for (int i = _highlightIndex - 1; i >= 0; i--)
+                    {
+                        if (Entries[i].Enabled)
+                        {
+                            _highlightIndex = i;
+                            break;
+                        }
+                    }
+
                     KeyboardScroll = true;
                     lastCursorPos = cursorPos;
                 }
                 else if (SharedBinds.DownArrow.IsNewPressed || SharedBinds.DownArrow.IsPressedAndHeld)
                 {
-                    HighlightIndex++;
+                    for (int i = _highlightIndex + 1; i < Entries.Count; i++)
+                    {
+                        if (Entries[i].Enabled)
+                        {
+                            _highlightIndex = i;
+                            break;
+                        }
+                    }
+
                     KeyboardScroll = true;
                     lastCursorPos = cursorPos;
                 }
@@ -193,7 +273,7 @@ namespace RichHudFramework.UI
 
                         if (newIndex >= 0 && newIndex < Entries.Count)
                         {
-                            HighlightIndex = newIndex;
+                            _highlightIndex = newIndex;
                             listMousedOver = true;
                         }
                     }
@@ -202,13 +282,72 @@ namespace RichHudFramework.UI
 
             if ((listMousedOver && SharedBinds.LeftButton.IsNewPressed) || (HasFocus && SharedBinds.Space.IsNewPressed))
             {
-                SelectionIndex = HighlightIndex;
+                _selectionIndex = _highlightIndex;
                 SelectionChanged?.Invoke(this, EventArgs.Empty);
                 KeyboardScroll = false;
             }
 
-            HighlightIndex = MathHelper.Clamp(HighlightIndex, 0, Entries.Count - 1);
+            _highlightIndex = MathHelper.Clamp(_highlightIndex, 0, Entries.Count - 1);
         }
 
+        /// <summary>
+        /// Returns first enabled element at or after the given index. Wraps around.
+        /// </summary>
+        private int FindFirstEnabled(int index, bool wrap)
+        {
+            if (wrap)
+            {
+                int j = index;
+
+                for (int n = 0; n < 2 * Entries.Count; n++)
+                {
+                    if (Entries[j].Enabled)
+                        return j;
+
+                    j++;
+                    j %= Entries.Count;
+                }
+            }
+            else
+            {
+                for (int n = index; n < Entries.Count; n++)
+                {
+                    if (Entries[n].Enabled)
+                        return n;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Returns preceeding enabled element at or after the given index. Wraps around.
+        /// </summary>
+        private int FindLastEnabled(int index, bool wrap)
+        {
+            if (wrap)
+            {
+                int j = index;
+
+                for (int n = 0; n < 2 * Entries.Count; n++)
+                {
+                    if (Entries[j].Enabled)
+                        return j;
+
+                    j++;
+                    j %= Entries.Count;
+                }
+            }
+            else
+            {
+                for (int n = index; n >= 0; n--)
+                {
+                    if (Entries[n].Enabled)
+                        return n;
+                }
+            }
+
+            return -1;
+        }
     }
 }

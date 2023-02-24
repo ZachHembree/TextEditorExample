@@ -259,14 +259,17 @@ namespace RichHudFramework
             /// If you need to update input, use HandleInput().
             /// </summary>
             public override void BeginInput()
-            {                
+            {
                 if (!ExceptionHandler.ClientsPaused)
                 {
                     try
                     {
-                        State &= ~HudElementStates.IsMousedOver;
+                        State &= ~(HudElementStates.IsMousedOver | HudElementStates.WasParentInputEnabled);
 
-                        if (Visible)
+                        if (_parent != null)
+                            State |= _parent.InputEnabled ? HudElementStates.WasParentInputEnabled : HudElementStates.None;
+
+                        if (Visible && InputEnabled)
                         {
                             Vector3 cursorPos = HudSpace.CursorPos;
                             bool mouseInBounds = (State & HudElementStates.IsMouseInBounds) > 0;
@@ -387,8 +390,8 @@ namespace RichHudFramework
             /// </summary>
             private void UpdateMasking()
             {
-                if (_parentFull != null && 
-                    (_parentFull.State & HudElementStates.IsMasked) > 0 && 
+                if (_parentFull != null &&
+                    (_parentFull.State & HudElementStates.IsMasked) > 0 &&
                     (State & HudElementStates.CanIgnoreMasking) == 0
                 )
                     State |= HudElementStates.IsMasked;

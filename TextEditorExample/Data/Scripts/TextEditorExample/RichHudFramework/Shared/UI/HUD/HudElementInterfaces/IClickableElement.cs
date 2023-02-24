@@ -3,8 +3,6 @@ using VRage;
 
 namespace RichHudFramework
 {
-    public delegate void EventHandler(object sender, EventArgs e);
-
     namespace UI
     {
         /// <summary>
@@ -55,7 +53,7 @@ namespace RichHudFramework
             /// <summary>
             /// Determines whether the input element is enabled and accepting input
             /// </summary>
-            bool Enabled { get; set; }
+            bool InputEnabled { get; set; }
 
             /// <summary>
             /// True if the element is being clicked with the left mouse button
@@ -68,14 +66,24 @@ namespace RichHudFramework
             bool IsRightClicked { get; }
 
             /// <summary>
-            /// True if the element was just with the left mouse button
+            /// True if the element was just clicked with the left mouse button
             /// </summary>
             bool IsNewLeftClicked { get; }
 
             /// <summary>
-            /// True if the element was just with the right mouse button
+            /// True if the element was just clicked with the right mouse button
             /// </summary>
             bool IsNewRightClicked { get; }
+
+            /// <summary>
+            /// True if the element was just released after being left clicked
+            /// </summary>
+            bool IsLeftReleased { get; }
+
+            /// <summary>
+            /// True if the element was just released after being right clicked
+            /// </summary>
+            bool IsRightReleased { get; }
 
             /// <summary>
             /// Indicates whether or not the cursor is currently over this element.
