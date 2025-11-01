@@ -1,8 +1,8 @@
-﻿using System;
+using RichHudFramework.UI.Rendering;
+using System;
 using System.Collections.Generic;
 using VRage;
 using VRageMath;
-using RichHudFramework.UI.Rendering;
 using ApiMemberAccessor = System.Func<object, int, object>;
 using FloatProp = VRage.MyTuple<System.Func<float>, System.Action<float>>;
 using HudSpaceDelegate = System.Func<VRage.MyTuple<bool, float, VRageMath.MatrixD>>;
@@ -11,366 +11,378 @@ using Vec2Prop = VRage.MyTuple<System.Func<VRageMath.Vector2>, System.Action<VRa
 
 namespace RichHudFramework
 {
-    using Internal;
-    using Client;
-    using CursorMembers = MyTuple<
-        Func<HudSpaceDelegate, bool>, // IsCapturingSpace
-        Func<float, HudSpaceDelegate, bool>, // TryCaptureHudSpace
-        Func<ApiMemberAccessor, bool>, // IsCapturing
-        Func<ApiMemberAccessor, bool>, // TryCapture
-        Func<ApiMemberAccessor, bool>, // TryRelease
-        ApiMemberAccessor // GetOrSetMember
-    >;
-    using TextBuilderMembers = MyTuple<
-        MyTuple<Func<int, int, object>, Func<int>>, // GetLineMember, GetLineCount
-        Func<Vector2I, int, object>, // GetCharMember
-        ApiMemberAccessor, // GetOrSetMember
-        Action<IList<RichStringMembers>, Vector2I>, // Insert
-        Action<IList<RichStringMembers>>, // SetText
-        Action // Clear
-    >;
+	using Client;
+	using Internal;
+	using CursorMembers = MyTuple<
+		Func<HudSpaceDelegate, bool>, // IsCapturingSpace
+		Func<float, HudSpaceDelegate, bool>, // TryCaptureHudSpace
+		Func<ApiMemberAccessor, bool>, // IsCapturing
+		Func<ApiMemberAccessor, bool>, // TryCapture
+		Func<ApiMemberAccessor, bool>, // TryRelease
+		ApiMemberAccessor // GetOrSetMember
+	>;
+	using TextBuilderMembers = MyTuple<
+		MyTuple<Func<int, int, object>, Func<int>>, // GetLineMember, GetLineCount
+		Func<Vector2I, int, object>, // GetCharMember
+		ApiMemberAccessor, // GetOrSetMember
+		Action<IList<RichStringMembers>, Vector2I>, // Insert
+		Action<IList<RichStringMembers>>, // SetText
+		Action // Clear
+	>;
 
-    namespace UI
-    {
-        using TextBoardMembers = MyTuple<
-            TextBuilderMembers,
-            FloatProp, // Scale
-            Func<Vector2>, // Size
-            Func<Vector2>, // TextSize
-            Vec2Prop, // FixedSize
-            Action<BoundingBox2, BoundingBox2, MatrixD[]> // Draw 
-        >;
+	namespace UI
+	{
+		using static NodeConfigIndices;
+		using TextBoardMembers = MyTuple<
+			TextBuilderMembers,
+			FloatProp, // Scale
+			Func<Vector2>, // Size
+			Func<Vector2>, // TextSize
+			Vec2Prop, // FixedSize
+			Action<BoundingBox2, BoundingBox2, MatrixD[]> // Draw 
+		>;
 
-        namespace Client
-        {
-            using HudClientMembers = MyTuple<
-                CursorMembers, // Cursor
-                Func<TextBoardMembers>, // GetNewTextBoard
-                ApiMemberAccessor, // GetOrSetMembers
-                Action // Unregister
-            >;
-            using HudUpdateAccessors = MyTuple<
-                ApiMemberAccessor,
-                MyTuple<Func<ushort>, Func<Vector3D>>, // ZOffset + GetOrigin
-                Action, // DepthTest
-                Action, // HandleInput
-                Action<bool>, // BeforeLayout
-                Action // BeforeDraw
-            >;
+		namespace Client
+		{
+			using HudClientMembers = MyTuple<
+				CursorMembers, // Cursor
+				Func<TextBoardMembers>, // GetNewTextBoard
+				ApiMemberAccessor, // GetOrSetMembers
+				Action // Unregister
+			>;
 
-            public sealed partial class HudMain : RichHudClient.ApiModule<HudClientMembers>
-            {
-                /// <summary>
-                /// Root parent for all HUD elements.
-                /// </summary>
-                public static HudParentBase Root
-                {
-                    get
-                    {
-                        if (_instance == null)
-                            Init();
 
-                        return _instance.root;
-                    }
-                }
+			public sealed partial class HudMain : RichHudClient.ApiModule<HudClientMembers>
+			{
+				/// <summary>
+				/// Root parent for all HUD elements.
+				/// </summary>
+				public static HudParentBase Root
+				{
+					get
+					{
+						if (Instance == null)
+							Init();
 
-                /// <summary>
-                /// Root node for high DPI scaling at > 1080p. Draw matrix automatically rescales to comensate
-                /// for decrease in apparent size due to high DPI displays.
-                /// </summary>
-                public static HudParentBase HighDpiRoot
-                {
-                    get
-                    {
-                        if (_instance == null)
-                            Init();
+						return Instance._root;
+					}
+				}
 
-                        return _instance.highDpiRoot;
-                    }
-                }
+				/// <summary>
+				/// Root node for high DPI scaling at > 1080p. Draw matrix automatically rescales to comensate
+				/// for decrease in apparent size due to high DPI displays.
+				/// </summary>
+				public static HudParentBase HighDpiRoot
+				{
+					get
+					{
+						if (Instance == null)
+							Init();
 
-                /// <summary>
-                /// Cursor shared between mods.
-                /// </summary>
-                public static ICursor Cursor
-                {
-                    get
-                    {
-                        if (_instance == null)
-                            Init();
+						return Instance.highDpiRoot;
+					}
+				}
 
-                        return _instance.cursor;
-                    }
-                }
+				/// <summary>
+				/// Cursor shared between mods.
+				/// </summary>
+				public static ICursor Cursor
+				{
+					get
+					{
+						if (Instance == null)
+							Init();
 
-                /// <summary>
-                /// Shared clipboard.
-                /// </summary>
-                public static RichText ClipBoard
-                {
-                    get
-                    {
-                        object value = Instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.ClipBoard);
+						return Instance.cursor;
+					}
+				}
 
-                        if (value != null)
-                            return new RichText(value as List<RichStringMembers>);
-                        else
-                            return default(RichText);
-                    }
-                    set { Instance.GetOrSetMemberFunc(value.apiData, (int)HudMainAccessors.ClipBoard); }
-                }
+				/// <summary>
+				/// Shared clipboard.
+				/// </summary>
+				public static RichText ClipBoard
+				{
+					get
+					{
+						if (Instance == null)
+							Init();
 
-                /// <summary>
-                /// Resolution scale normalized to 1080p for resolutions over 1080p. Returns a scale of 1f
-                /// for lower resolutions.
-                /// </summary>
-                public static float ResScale { get; private set; }
+						object value = Instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.ClipBoard);
 
-                /// <summary>
-                /// Matrix used to convert from 2D pixel-value screen space coordinates to worldspace.
-                /// </summary>
-                public static MatrixD PixelToWorld => PixelToWorldRef[0];
+						if (value != null)
+							return new RichText(value as List<RichStringMembers>);
+						else
+							return default(RichText);
+					}
+					set 
+					{
+						if (Instance == null)
+							Init();
 
-                /// <summary>
-                /// Matrix used to convert from 2D pixel-value screen space coordinates to worldspace.
-                /// </summary>
-                public static MatrixD[] PixelToWorldRef { get; private set; }
+						Instance.GetOrSetMemberFunc(value.apiData, (int)HudMainAccessors.ClipBoard); 
+					}
+				}
 
-                /// <summary>
-                /// The current horizontal screen resolution in pixels.
-                /// </summary>
-                public static float ScreenWidth { get; private set; }
+				/// <summary>
+				/// Resolution scale normalized to 1080p for resolutions over 1080p. Returns a scale of 1f
+				/// for lower resolutions.
+				/// </summary>
+				public static float ResScale { get; private set; }
 
-                /// <summary>
-                /// The current vertical resolution in pixels.
-                /// </summary>
-                public static float ScreenHeight { get; private set; }
+				/// <summary>
+				/// Matrix used to convert from 2D pixel-value screen space coordinates to worldspace.
+				/// </summary>
+				public static MatrixD PixelToWorld => PixelToWorldRef[0];
 
-                /// <summary>
-                /// The current aspect ratio (ScreenWidth/ScreenHeight).
-                /// </summary>
-                public static float AspectRatio { get; private set; }
+				/// <summary>
+				/// Matrix used to convert from 2D pixel-value screen space coordinates to worldspace.
+				/// </summary>
+				public static MatrixD[] PixelToWorldRef { get; private set; }
 
-                /// <summary>
-                /// The current field of view
-                /// </summary>
-                public static float Fov { get; private set; }
+				/// <summary>
+				/// The current horizontal screen resolution in pixels.
+				/// </summary>
+				public static float ScreenWidth { get; private set; }
 
-                /// <summary>
-                /// Scaling used by MatBoards to compensate for changes in apparent size and position as a result
-                /// of changes to Fov.
-                /// </summary>
-                public static float FovScale { get; private set; }
+				/// <summary>
+				/// The current vertical resolution in pixels.
+				/// </summary>
+				public static float ScreenHeight { get; private set; }
 
-                /// <summary>
-                /// The current opacity for the in-game menus as configured.
-                /// </summary>
-                public static float UiBkOpacity { get; private set; }
+				/// <summary>
+				/// Current screen dimensions ScreenWidth x ScreenHeight in pixels
+				/// </summary>
+				public static Vector2 ScreenDim { get; private set; }
 
-                /// <summary>
-                /// If true then the cursor will be visible while chat is open
-                /// </summary>
-                public static bool EnableCursor { get; set; }
+				/// <summary>
+				/// Current screen dimensions ScreenWidth x ScreenHeight with high DPI scaling
+				/// </summary>
+				public static Vector2 ScreenDimHighDPI { get; private set; }
 
-                /// <summary>
-                /// Current input mode. Used to indicate whether UI elements should accept cursor or text input.
-                /// </summary>
-                public static HudInputMode InputMode { get; private set; }
+				/// <summary>
+				/// The current aspect ratio (ScreenWidth/ScreenHeight).
+				/// </summary>
+				public static float AspectRatio { get; private set; }
 
-                private static HudMain Instance
-                {
-                    get { Init(); return _instance; }
-                    set { _instance = value; }
-                }
-                private static HudMain _instance;
+				/// <summary>
+				/// The current field of view
+				/// </summary>
+				public static float Fov { get; private set; }
 
-                private readonly HudClientRoot root;
-                private readonly ScaledSpaceNode highDpiRoot;
-                private readonly HudCursor cursor;
-                private bool enableCursorLast;
+				/// <summary>
+				/// Scaling used by MatBoards to compensate for changes in apparent size and position as a result
+				/// of changes to Fov.
+				/// </summary>
+				public static float FovScale { get; private set; }
 
-                private readonly Func<TextBoardMembers> GetTextBoardDataFunc;
-                private readonly ApiMemberAccessor GetOrSetMemberFunc;
-                private readonly Action UnregisterAction;
+				/// <summary>
+				/// The current opacity for the in-game menus as configured.
+				/// </summary>
+				public static float UiBkOpacity { get; private set; }
 
-                private HudMain() : base(ApiModuleTypes.HudMain, false, true)
-                {
-                    if (_instance != null)
-                        throw new Exception("Only one instance of HudMain can exist at any give time!");
+				/// <summary>
+				/// If true then the cursor will be visible
+				/// </summary>
+				public static bool EnableCursor { get; set; }
 
-                    _instance = this;
-                    var members = GetApiData();
+				/// <summary>
+				/// Current input mode. Used to indicate whether UI elements should accept cursor or text input.
+				/// </summary>
+				public static HudInputMode InputMode { get; private set; }
 
-                    cursor = new HudCursor(members.Item1);
-                    GetTextBoardDataFunc = members.Item2;
-                    GetOrSetMemberFunc = members.Item3;
-                    UnregisterAction = members.Item4;
+				public static HudMain Instance { get; private set; }
 
-                    PixelToWorldRef = new MatrixD[1];
-                    root = new HudClientRoot();
-                    highDpiRoot = new ScaledSpaceNode(root) { UpdateScaleFunc = () => ResScale };
+				public readonly HudParentBase _root;
+				private readonly ScaledSpaceNode highDpiRoot;
+				private readonly HudCursor cursor;
+				private bool enableCursorLast;
 
-                    Action<List<HudUpdateAccessors>, byte> rootDelegate = root.GetUpdateAccessors,
-                        safeAccessor = (List<HudUpdateAccessors> list, byte depth) =>
-                        {
-                            ExceptionHandler.Run(() => rootDelegate(list, depth));
-                        };
+				private readonly Func<TextBoardMembers> GetTextBoardDataFunc;
+				private readonly ApiMemberAccessor GetOrSetMemberFunc;
+				private readonly Action UnregisterAction;
 
-                    // Register update delegate
-                    GetOrSetMemberFunc(safeAccessor, (int)HudMainAccessors.GetUpdateAccessors);
+				private HudMain() : base(ApiModuleTypes.HudMain, false, true)
+				{
+					if (Instance != null)
+						throw new Exception("Only one instance of HudMain can exist at any give time!");
 
-                    GetOrSetMemberFunc(new Action(() => ExceptionHandler.Run(BeforeMasterDraw)), (int)HudMainAccessors.SetBeforeDrawCallback);
-                    GetOrSetMemberFunc(new Action(() => ExceptionHandler.Run(AfterMasterDraw)), (int)HudMainAccessors.SetAfterDrawCallback);
+					Instance = this;
+					var members = GetApiData();
 
-                    UpdateCache();
-                }
+					cursor = new HudCursor(members.Item1);
+					GetTextBoardDataFunc = members.Item2;
+					GetOrSetMemberFunc = members.Item3;
+					UnregisterAction = members.Item4;
 
-                private static void Init()
-                {
-                    BillBoardUtils.Init();
+					PixelToWorldRef = new MatrixD[1];
+					_root = new HudClientRoot();
+					highDpiRoot = new ScaledSpaceNode(_root) { UpdateScaleFunc = () => ResScale };
 
-                    if (_instance == null)
-                        new HudMain();
-                }
+					// Register update handle
+					GetOrSetMemberFunc(_root.DataHandle, (int)HudMainAccessors.ClientRootNode);
+					GetOrSetMemberFunc(new Action(() => ExceptionHandler.Run(BeforeMasterDraw)), (int)HudMainAccessors.SetBeforeDrawCallback);
 
-                private void BeforeMasterDraw()
-                {
-                    UpdateCache();
-                    cursor.Update();
-                    BillBoardUtils.BeginDraw();
-                }
+					UpdateCache();
+				}
 
-                private void AfterMasterDraw()
-                {
-                    BillBoardUtils.FinishDraw();
-                }
- 
-                public override void Close()
-                {
-                    UnregisterAction?.Invoke();
-                    _instance = null;
-                }
+				public static void Init()
+				{
+					BillBoardUtils.Init();
 
-                private void UpdateCache()
-                {
-                    ScreenWidth = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenWidth);
-                    ScreenHeight = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenHeight);
-                    AspectRatio = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.AspectRatio);
-                    ResScale = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ResScale);
-                    Fov = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.Fov);
-                    FovScale = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.FovScale);
-                    PixelToWorldRef[0] = (MatrixD)GetOrSetMemberFunc(null, (int)HudMainAccessors.PixelToWorldTransform);
-                    UiBkOpacity = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.UiBkOpacity);
-                    InputMode = (HudInputMode)GetOrSetMemberFunc(null, (int)HudMainAccessors.InputMode);
+					if (Instance == null)
+						new HudMain();
+				}
 
-                    if (EnableCursor != enableCursorLast)
-                        GetOrSetMemberFunc(EnableCursor, (int)HudMainAccessors.EnableCursor);
-                    else
-                        EnableCursor = (bool)GetOrSetMemberFunc(null, (int)HudMainAccessors.EnableCursor);
+				private void BeforeMasterDraw()
+				{
+					UpdateCache();
+					cursor.Update();
+				}
 
-                    enableCursorLast = EnableCursor;
-                }
+				public override void Close()
+				{
+					UnregisterAction?.Invoke();
+					Instance = null;
+				}
 
-                /// <summary>
-                /// Returns the ZOffset for focusing a window and registers a callback
-                /// for when another object takes focus.
-                /// </summary>
-                public static byte GetFocusOffset(Action<byte> LoseFocusCallback) =>
-                    (byte)Instance.GetOrSetMemberFunc(LoseFocusCallback, (int)HudMainAccessors.GetFocusOffset);
+				private void UpdateCache()
+				{
+					ScreenWidth = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenWidth);
+					ScreenHeight = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ScreenHeight);
+					AspectRatio = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.AspectRatio);
+					ResScale = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.ResScale);
+					Fov = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.Fov);
+					FovScale = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.FovScale);
+					PixelToWorldRef[0] = (MatrixD)GetOrSetMemberFunc(null, (int)HudMainAccessors.PixelToWorldTransform);
+					UiBkOpacity = (float)GetOrSetMemberFunc(null, (int)HudMainAccessors.UiBkOpacity);
+					InputMode = (HudInputMode)GetOrSetMemberFunc(null, (int)HudMainAccessors.InputMode);
 
-                /// <summary>
-                /// Registers a callback for UI elements taking input focus. Callback
-                /// invoked when another element takes focus.
-                /// </summary>
-                public static void GetInputFocus(Action LoseFocusCallback) =>
-                    Instance.GetOrSetMemberFunc(LoseFocusCallback, (int)HudMainAccessors.GetInputFocus);
+					ScreenDim = new Vector2(ScreenWidth, ScreenHeight);
+					ScreenDimHighDPI = ScreenDim / ResScale;
 
-                /// <summary>
-                /// Returns accessors for a new TextBoard
-                /// </summary>
-                public static TextBoardMembers GetTextBoardData() =>
-                    Instance.GetTextBoardDataFunc();
+					if (EnableCursor != enableCursorLast)
+						GetOrSetMemberFunc(EnableCursor, (int)HudMainAccessors.EnableCursor);
+					else
+						EnableCursor = (bool)GetOrSetMemberFunc(null, (int)HudMainAccessors.EnableCursor);
 
-                /// <summary>
-                /// Converts from a position in absolute screen space coordinates to a position in pixels.
-                /// </summary>
-                public static Vector2 GetPixelVector(Vector2 scaledVec)
-                {
-                    if (_instance == null)
-                        Init();
+					enableCursorLast = EnableCursor;
+				}
 
-                    return new Vector2
-                    (
-                        (int)(scaledVec.X * ScreenWidth),
-                        (int)(scaledVec.Y * ScreenHeight)
-                    );
-                }
+				/// <summary>
+				/// Returns the ZOffset for focusing a window and registers a callback
+				/// for when another object takes focus.
+				/// </summary>
+				public static byte GetFocusOffset(Action<byte> LoseFocusCallback)
+				{
+					if (Instance == null)
+						Init();
 
-                /// <summary>
-                /// Converts from a coordinate given in pixels to a position in absolute units.
-                /// </summary>
-                public static Vector2 GetAbsoluteVector(Vector2 pixelVec)
-                {
-                    if (_instance == null)
-                        Init();
+					return (byte)Instance.GetOrSetMemberFunc(LoseFocusCallback, (int)HudMainAccessors.GetFocusOffset);
+				}
 
-                    return new Vector2
-                    (
-                        pixelVec.X / ScreenWidth,
-                        pixelVec.Y / ScreenHeight
-                    );
-                }
+				/// <summary>
+				/// Registers a callback for UI elements taking input focus. Callback
+				/// invoked when another element takes focus.
+				/// </summary>
+				public static void GetInputFocus(Action LoseFocusCallback)
+				{
+					if (Instance == null)
+						Init();
 
-                /// <summary>
-                /// Root UI element for the client. Registered directly to master root.
-                /// </summary>
-                private class HudClientRoot : HudParentBase, IReadOnlyHudSpaceNode
-                {
-                    public override bool Visible => true;
+					Instance.GetOrSetMemberFunc(LoseFocusCallback, (int)HudMainAccessors.GetInputFocus);
+				}
 
-                    public bool DrawCursorInHudSpace { get; }
+				/// <summary>
+				/// Returns accessors for a new TextBoard
+				/// </summary>
+				public static TextBoardMembers GetTextBoardData() 
+				{
+					if (Instance == null)
+						Init();
 
-                    public Vector3 CursorPos { get; private set; }
+					return Instance.GetTextBoardDataFunc();
+				}
+					
 
-                    public HudSpaceDelegate GetHudSpaceFunc { get; }
+				/// <summary>
+				/// Converts from a position in normalized coordinates to a position in pixels.
+				/// </summary>
+				public static Vector2 GetPixelVector(Vector2 scaledVec)
+				{
+					if (Instance == null)
+						Init();
 
-                    public MatrixD PlaneToWorld => PlaneToWorldRef[0];
+					return new Vector2
+					(
+						(int)(scaledVec.X * ScreenWidth),
+						(int)(scaledVec.Y * ScreenHeight)
+					);
+				}
 
-                    public MatrixD[] PlaneToWorldRef { get; }
+				/// <summary>
+				/// Converts from a coordinate given in pixels to a position in normalized units
+				/// </summary>
+				public static Vector2 GetAbsoluteVector(Vector2 pixelVec)
+				{
+					if (Instance == null)
+						Init();
 
-                    public Func<MatrixD> UpdateMatrixFunc { get; }
+					return new Vector2
+					(
+						pixelVec.X / ScreenWidth,
+						pixelVec.Y / ScreenHeight
+					);
+				}
 
-                    public Func<Vector3D> GetNodeOriginFunc { get; }
+				/// <summary>
+				/// Root UI element for the client. Registered directly to master root.
+				/// </summary>
+				private class HudClientRoot : HudParentBase, IReadOnlyHudSpaceNode
+				{
+					public bool DrawCursorInHudSpace { get; }
 
-                    public bool IsInFront { get; }
+					public Vector3 CursorPos { get; private set; }
 
-                    public bool IsFacingCamera { get; }
+					public HudSpaceDelegate GetHudSpaceFunc { get; }
 
-                    public HudClientRoot()
-                    {
-                        accessorDelegates.Item2 = new MyTuple<Func<ushort>, Func<Vector3D>>(() => 0, null);
+					public MatrixD PlaneToWorld => PlaneToWorldRef[0];
 
-                        State |= HudElementStates.CanUseCursor;
-                        DrawCursorInHudSpace = true;
-                        HudSpace = this;
-                        IsInFront = true;
-                        IsFacingCamera = true;
-                        PlaneToWorldRef = new MatrixD[1];
+					public MatrixD[] PlaneToWorldRef { get; }
 
-                        GetHudSpaceFunc = _instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceFunc) as HudSpaceDelegate;
-                        GetNodeOriginFunc = _instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceOriginFunc) as Func<Vector3D>;
-                    }
+					public Func<MatrixD> UpdateMatrixFunc { get; }
 
-                    protected override void Layout()
-                    {
-                        PlaneToWorldRef[0] = PixelToWorldRef[0];
-                        CursorPos = new Vector3(Cursor.ScreenPos.X, Cursor.ScreenPos.Y, 0f);
-                    }
-                }
-            }
-        }
-    }
+					public Func<Vector3D> GetNodeOriginFunc
+					{
+						get { return _dataHandle[0].Item2[0]; }
+						private set { _dataHandle[0].Item2[0] = value; }
+					}
 
-    namespace UI.Server
-    { }
+					public bool IsInFront { get; }
+
+					public bool IsFacingCamera { get; }
+
+					public HudClientRoot()
+					{
+						DrawCursorInHudSpace = true;
+						HudSpace = this;
+						IsInFront = true;
+						IsFacingCamera = true;
+						PlaneToWorldRef = PixelToWorldRef;
+
+						GetHudSpaceFunc = Instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceFunc) as HudSpaceDelegate;
+						GetNodeOriginFunc = Instance.GetOrSetMemberFunc(null, (int)HudMainAccessors.GetPixelSpaceOriginFunc) as Func<Vector3D>;
+						Config[StateID] |= (uint)(HudElementStates.CanUseCursor | HudElementStates.IsSpaceNode);
+					}
+
+					protected override void Layout()
+					{
+						CursorPos = new Vector3(Cursor.ScreenPos.X, Cursor.ScreenPos.Y, 0f);
+					}
+				}
+			}
+		}
+	}
+
+	namespace UI.Server
+	{ }
 }

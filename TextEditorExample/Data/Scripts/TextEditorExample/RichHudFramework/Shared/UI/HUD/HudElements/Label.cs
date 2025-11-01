@@ -1,92 +1,79 @@
-﻿using RichHudFramework.UI.Rendering;
-using VRageMath;
+﻿using VRageMath;
 
 namespace RichHudFramework.UI
 {
-    using Rendering;
-    using Rendering.Client;
-    using Rendering.Server;
+	using Rendering;
+	using Rendering.Client;
+	using Rendering.Server;
 
-    /// <summary>
-    /// HUD element used to render text.
-    /// </summary>
-    public class Label : LabelElementBase
-    {
-        /// <summary>
-        /// Text rendered by the label.
-        /// </summary>
-        public RichText Text { get { return _textBoard.GetText(); } set { _textBoard.SetText(value); } }
+	/// <summary>
+	/// HUD element used to render text.
+	/// </summary>
+	public class Label : LabelElementBase
+	{
+		/// <summary>
+		/// Text rendered by the label.
+		/// </summary>
+		public RichText Text { get { return TextBoard.GetText(); } set { TextBoard.SetText(value); } }
 
-        /// <summary>
-        /// TextBoard backing the label element.
-        /// </summary>
-        public override ITextBoard TextBoard => _textBoard;
+		/// <summary>
+		/// TextBoard backing the label element.
+		/// </summary>
+		public override ITextBoard TextBoard { get; }
 
-        /// <summary>
-        /// Default formatting used by the label.
-        /// </summary>
-        public GlyphFormat Format { get { return _textBoard.Format; } set { _textBoard.Format = value; } }
+		/// <summary>
+		/// Default formatting used by the label.
+		/// </summary>
+		public GlyphFormat Format { get { return TextBoard.Format; } set { TextBoard.SetFormatting(value); } }
 
-        /// <summary>
-        /// Line formatting mode used by the label.
-        /// </summary>
-        public TextBuilderModes BuilderMode { get { return _textBoard.BuilderMode; } set { _textBoard.BuilderMode = value; } }
+		/// <summary>
+		/// Line formatting mode used by the label.
+		/// </summary>
+		public TextBuilderModes BuilderMode { get { return TextBoard.BuilderMode; } set { TextBoard.BuilderMode = value; } }
 
-        /// <summary>
-        /// If true, the element will automatically resize to fit the text.
-        /// </summary>
-        public bool AutoResize { get { return _textBoard.AutoResize; } set { _textBoard.AutoResize = value; } }
+		/// <summary>
+		/// If true, the element will automatically resize to fit the text. True by default.
+		/// </summary>
+		public bool AutoResize { get { return TextBoard.AutoResize; } set { TextBoard.AutoResize = value; } }
 
-        /// <summary>
-        /// If true, the text will be vertically centered.
-        /// </summary>
-        public bool VertCenterText { get { return _textBoard.VertCenterText; } set { _textBoard.VertCenterText = value; } }
+		/// <summary>
+		/// If true, the text will be vertically centered. True by default.
+		/// </summary>
+		public bool VertCenterText { get { return TextBoard.VertCenterText; } set { TextBoard.VertCenterText = value; } }
 
-        public override float Width
-        {
-            get { return _textBoard.Size.X + Padding.X; }
-            set
-            {
-                if (value > Padding.X)
-                    value -= Padding.X;
+		/// <summary>
+		/// Gets or sets the maximum line width before text will wrap to the next line. Word wrapping must be enabled for
+		/// this to apply.
+		/// </summary>
+		public float LineWrapWidth { get { return TextBoard.LineWrapWidth; } set { TextBoard.LineWrapWidth = value; } }
 
-                _textBoard.FixedSize = new Vector2(value, _textBoard.FixedSize.Y);
-            }
-        }
+		public Label(HudParentBase parent) : base(parent)
+		{
+			TextBoard = new TextBoard();
+			TextBoard.SetText("NewLabel", GlyphFormat.White);
+		}
 
-        public override float Height
-        {
-            get { return _textBoard.Size.Y + Padding.Y; }
-            set
-            {
-                if (value > Padding.Y)
-                    value -= Padding.Y;
+		public Label() : this(null)
+		{ }
 
-                _textBoard.FixedSize = new Vector2(_textBoard.FixedSize.X, value);
-            }
-        }
+		protected override void UpdateSize()
+		{
+			if (TextBoard.AutoResize)
+				UnpaddedSize = TextBoard.TextSize;
+		}
 
-        protected readonly TextBoard _textBoard;
+		protected override void Draw()
+		{
+			Vector2 halfSize = .5f * UnpaddedSize;
+			BoundingBox2 box = new BoundingBox2(Position - halfSize, Position + halfSize);
 
-        public Label(HudParentBase parent) : base(parent)
-        {
-            _textBoard = new TextBoard();
-            _textBoard.Format = GlyphFormat.White;
-            _textBoard.SetText("NewLabel");
-        }
+			if (!TextBoard.AutoResize)
+				TextBoard.FixedSize = UnpaddedSize;
 
-        public Label() : this(null)
-        { }
-
-        protected override void Draw()
-        {
-            Vector2 halfSize = (cachedSize - cachedPadding) * .5f;
-            BoundingBox2 box = new BoundingBox2(cachedPosition - halfSize, cachedPosition + halfSize);
-
-            if (maskingBox != null)
-                _textBoard.Draw(box, maskingBox.Value, HudSpace.PlaneToWorldRef);
-            else
-                _textBoard.Draw(box, CroppedBox.defaultMask, HudSpace.PlaneToWorldRef);
-        }
-    }
+			if (maskingBox != null)
+				TextBoard.Draw(box, maskingBox.Value, HudSpace.PlaneToWorldRef);
+			else
+				TextBoard.Draw(box, CroppedBox.defaultMask, HudSpace.PlaneToWorldRef);
+		}
+	}
 }

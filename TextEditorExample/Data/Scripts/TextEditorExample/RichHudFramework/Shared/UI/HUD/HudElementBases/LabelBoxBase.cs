@@ -45,61 +45,29 @@ namespace RichHudFramework
             /// </summary>
             public readonly TexturedBox background;
 
-            public override float Width
-            {
-                get { return FitToTextElement ? TextSize.X + Padding.X : (_size.X + Padding.X); }
-                set
-                {
-                    if (!FitToTextElement)
-                        value = MathHelper.Max(TextSize.X, value);
-
-                    if (value > Padding.X)
-                        value -= Padding.X;
-
-                    if (FitToTextElement)
-                        TextSize = new Vector2(value, TextSize.Y);
-                    else
-                        base.Width = value;
-                }
-            }
-
-            public override float Height
-            {
-                get { return FitToTextElement ? TextSize.Y + Padding.Y : (_size.Y + Padding.Y); }
-                set
-                {
-                    if (!FitToTextElement)
-                        value = MathHelper.Max(TextSize.Y, value);
-
-                    if (value > Padding.Y)
-                        value -= Padding.Y;
-
-                    if (FitToTextElement)
-                        TextSize = new Vector2(TextSize.X, value);
-                    else
-                        base.Height = value;
-                }
-            }
-
             public LabelBoxBase(HudParentBase parent) : base(parent)
             {
                 background = new TexturedBox(this)
                 {
-                    DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                    DimAlignment = DimAlignments.UnpaddedSize,
                 };
 
                 FitToTextElement = true;
                 Color = Color.Gray;
             }
 
-            protected override void Layout()
+            protected override void UpdateSize()
             {
-                // The element may not be smaller than the text
-                if (!FitToTextElement)
-                {
-                    _size = Vector2.Max(TextSize, _size);
-                }
-            }
+				if (!AutoResize)
+				{
+					TextSize = UnpaddedSize;
+				}
+  
+				if (FitToTextElement)
+				{
+					UnpaddedSize = TextSize;
+				}
+			}
         }
     }
 }

@@ -23,7 +23,7 @@ namespace RichHudFramework
                     set
                     {
                         if (value != color)
-                            minBoard.materialData.bbColor = BillBoardUtils.GetBillBoardBoardColor(value);
+                            minBoard.materialData.bbColor = value.GetBbColor();
 
                         color = value;
                     }
@@ -39,7 +39,7 @@ namespace RichHudFramework
                     {
                         if (value != matFrame.Material)
                         {
-                            updateMatFit = true;
+                            bbAspect = -1f;
                             matFrame.Material = value;
                             minBoard.materialData.textureID = value.TextureID;
                         }
@@ -56,14 +56,14 @@ namespace RichHudFramework
                     {
                         if (value != matFrame.Alignment)
                         {
-                            updateMatFit = true;
+                            bbAspect = -1f;
                             matFrame.Alignment = value;
                         }
                     }
                 }
 
                 private Color color;
-                private bool updateMatFit;
+                private float bbAspect;
 
                 private QuadBoard minBoard;
                 private readonly MaterialFrame matFrame;
@@ -77,7 +77,7 @@ namespace RichHudFramework
                     minBoard = QuadBoard.Default;
 
                     color = Color.White;
-                    updateMatFit = true;
+                    bbAspect = -1f;
                 }
 
                 /// <summary>
@@ -94,22 +94,32 @@ namespace RichHudFramework
                 /// </summary
                 public void Draw(ref CroppedBox box, MatrixD[] matrixRef)
                 {
-                    ContainmentType containment = ContainmentType.Contains;
+                    bool isDisjoint = false;
 
                     if (box.mask != null)
-                        box.mask.Value.Contains(ref box.bounds, out containment);
-
-                    if (containment != ContainmentType.Disjoint)
                     {
-                        if (updateMatFit && matFrame.Material != Material.Default)
+						isDisjoint =
+                            (box.bounds.Max.X < box.mask.Value.Min.X) ||
+                            (box.bounds.Min.X > box.mask.Value.Max.X) ||
+                            (box.bounds.Max.Y < box.mask.Value.Min.Y) ||
+                            (box.bounds.Min.Y > box.mask.Value.Max.Y);
+					}
+
+                    if (!isDisjoint)
+                    {
+                        if (matFrame.Material != Material.Default)
                         {
                             Vector2 boxSize = box.bounds.Size;
-                            minBoard.materialData.texBounds = matFrame.GetMaterialAlignment(boxSize.X / boxSize.Y);
-                            updateMatFit = false;
+                            float newAspect = (boxSize.X / boxSize.Y);
+
+                            if (Math.Abs(bbAspect - newAspect) > 1E-5f)
+                            {
+                                bbAspect = newAspect;
+                                minBoard.materialData.texBounds = matFrame.GetMaterialAlignment(bbAspect);
+                            }
                         }
 
-                        if (containment != ContainmentType.Disjoint)
-                            minBoard.Draw(ref box, matrixRef);
+                        minBoard.Draw(ref box, matrixRef);
                     }
                 }     
             }

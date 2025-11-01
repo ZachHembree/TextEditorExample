@@ -164,7 +164,7 @@ namespace RichHudFramework.UI
                 ClearSelection();
         }
 
-        protected override void HandleInput(Vector2 cursorPos)
+		protected override void HandleInput(Vector2 cursorPos)
         {
             bool useInput = allowInput || (MouseInput.HasFocus && HudMain.InputMode == HudInputMode.Full);
 
@@ -425,10 +425,8 @@ namespace RichHudFramework.UI
                 text.MoveToChar(index);
             }
 
-            protected override void Layout()
+			protected override void Layout()
             {
-                base.Layout();
-
                 if (caretMoved)
                 {
                     CaretMoved?.Invoke();
@@ -508,7 +506,8 @@ namespace RichHudFramework.UI
                     else if (text.Format.Alignment == TextAlignment.Right)
                         offset.X = textElement.Size.X * .5f - 2f;
 
-                    offset += _parentFull.Padding * .5f;
+                    var parentFull = Parent as HudElementBase;
+                    offset += parentFull.Padding * .5f;
 
                     if (!text.VertCenterText)
                         offset.Y = (text.Size.Y - Height) * .5f - 4f;
@@ -517,10 +516,10 @@ namespace RichHudFramework.UI
                 Offset = offset;
             }
 
-            /// <summary>
-            /// Handles input for moving the caret.
-            /// </summary>
-            protected override void HandleInput(Vector2 cursorPos)
+			/// <summary>
+			/// Handles input for moving the caret.
+			/// </summary>
+			protected override void HandleInput(Vector2 cursorPos)
             {
                 if (SharedBinds.DownArrow.IsPressedAndHeld || SharedBinds.DownArrow.IsNewPressed)
                     Move(new Vector2I(1, 0), true);
@@ -731,7 +730,7 @@ namespace RichHudFramework.UI
 
             protected override void Draw()
             {
-                if (lastTextSize != text.Size)
+				if (lastTextSize != text.Size)
                 {
                     lastTextSize = text.Size;
                     ClearSelection();

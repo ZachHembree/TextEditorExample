@@ -5,13 +5,15 @@ using RichHudFramework.Internal;
 
 namespace RichHudFramework.UI
 {
+    using static NodeConfigIndices;
     using Client;
     using Server;
 
     /// <summary>
-    /// Base type for HUD windows. Supports dragging/resizing like pretty much every other window ever.
+    /// Basic window type with a header, body and border. Supports dragging/resizing like pretty much every 
+    /// other window ever.
     /// </summary>
-    public abstract class WindowBase : HudElementBase, IClickableElement
+    public class Window : HudElementBase, IClickableElement
     {
         /// <summary>
         /// Window header text
@@ -39,12 +41,12 @@ namespace RichHudFramework.UI
         /// <summary>
         /// Determines the color of the body of the window.
         /// </summary>
-        public virtual Color BodyColor { get { return bodyBg.Color; } set { bodyBg.Color = value; } }
+        public virtual Color BodyColor { get { return windowBg.Color; } set { windowBg.Color = value; } }
 
         /// <summary>
         /// Minimum allowable size for the window.
         /// </summary>
-        public Vector2 MinimumSize { get { return minimumSize; } set { minimumSize = value; } }
+        public Vector2 MinimumSize { get { return _minimumSize; } set { _minimumSize = value; } }
 
         /// <summary>
         /// Determines whether or not the window can be resized by the user
@@ -87,36 +89,33 @@ namespace RichHudFramework.UI
         public readonly BorderBox border;
 
         protected readonly MouseInputElement inputInner, resizeInput;
-        protected readonly TexturedBox bodyBg;
+        protected readonly TexturedBox windowBg;
 
-        protected readonly Action<byte> LoseFocusCallback;
         protected float cornerSize = 16f;
-        protected bool canMoveWindow, canResize;
-        protected int resizeDir;
-        protected Vector2 cursorOffset, minimumSize;
+        protected bool canMoveWindow;
+        protected Vector2 resizeDir, cursorOffset, _minimumSize;
 
-        public WindowBase(HudParentBase parent) : base(parent)
+        public Window(HudParentBase parent) : base(parent)
         {
             header = new LabelBoxButton(this)
             {
                 DimAlignment = DimAlignments.Width,
                 Height = 32f,
-                ParentAlignment = ParentAlignments.Top | ParentAlignments.Inner,
+                ParentAlignment = ParentAlignments.InnerTop,
                 ZOffset = 1,
                 Format = GlyphFormat.White.WithAlignment(TextAlignment.Center),
                 HighlightEnabled = false,
                 AutoResize = false,
             };
 
-            body = new EmptyHudElement(header)
+            body = new EmptyHudElement(this)
             {
-                DimAlignment = DimAlignments.Width,
-                ParentAlignment = ParentAlignments.Bottom,
+                ParentAlignment = ParentAlignments.InnerBottom,
             };
 
-            bodyBg = new TexturedBox(body)
+            windowBg = new TexturedBox(this)
             {
-                DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                DimAlignment = DimAlignments.Size,
                 ZOffset = -2,
             };
 
@@ -124,22 +123,23 @@ namespace RichHudFramework.UI
             {
                 ZOffset = 1,
                 Thickness = 1f,
-                DimAlignment = DimAlignments.Both,
+                DimAlignment = DimAlignments.Size,
             };
 
             resizeInput = new MouseInputElement(this)
             {
                 ZOffset = sbyte.MaxValue,
                 Padding = new Vector2(16f),
-                DimAlignment = DimAlignments.Both,
+                DimAlignment = DimAlignments.Size,
                 CanIgnoreMasking = true
             };
             
             inputInner = new MouseInputElement(resizeInput)
             {
-                DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                DimAlignment = DimAlignments.UnpaddedSize,
             };
 
+            resizeDir = Vector2.Zero;
             AllowResizing = true;
             CanDrag = true;
             UseCursor = true;
@@ -147,92 +147,59 @@ namespace RichHudFramework.UI
             IsMasking = true;
             MinimumSize = new Vector2(200f, 200f);
 
-            LoseFocusCallback = LoseFocus;
-            GetFocus();
+			GetWindowFocus();
         }
 
-        protected override void Layout()
+		protected override void Layout()
         {
-            body.Height = Height - header.Height;
-
-            if (Visible && WindowActive)
-            {
-                if (canMoveWindow)
-                {
-                    Vector3 cursorPos = HudSpace.CursorPos;
-                    Offset = new Vector2(cursorPos.X, cursorPos.Y) + cursorOffset - Origin;
-                }
-
-                if (canResize)
-                    Resize();
-            }
-            else
-            {
-                canMoveWindow = false;
-                canResize = false;
-            }
+            body.Height = UnpaddedSize.Y - header.Height;
+            body.Width = UnpaddedSize.X;
         }
 
-        protected void Resize()
+        protected void Resize(Vector2 cursorPos)
         {
-            Vector3 cursorPos = HudSpace.CursorPos;
-            Vector2 center = Origin + Offset, newOffset = Offset;
-            float newWidth, newHeight;
+            Vector2 pos = Origin + Offset,
+                delta = resizeDir * (cursorPos - pos),
+                size = CachedSize;
 
-            // 1 == horizontal, 3 == both
-            if (resizeDir == 1 || resizeDir == 3)
+            if (delta.X > 0f)
             {
-                newWidth = Math.Abs(newOffset.X - cursorPos.X) + Width * .5f;
-
-                if (newWidth >= MinimumSize.X)
-                {
-                    Width = newWidth;
-
-                    if (cursorPos.X > center.X)
-                        newOffset.X = cursorPos.X - Width * .5f;
-                    else
-                        newOffset.X = cursorPos.X + Width * .5f;
-                }
+                delta.X = Math.Max(delta.X, .5f * MinimumSize.X);
+                size.X = .5f * size.X + delta.X;
+                pos.X = ((resizeDir.X * delta.X) + pos.X) + (-resizeDir.X * .5f * size.X);
             }
 
-            // 2 == vertical
-            if (resizeDir == 2 || resizeDir == 3)
+            if (delta.Y > 0f)
             {
-                newHeight = Math.Abs(newOffset.Y - cursorPos.Y) + Height * .5f;
-
-                if (newHeight >= MinimumSize.Y)
-                {
-                    Height = newHeight;
-
-                    if (cursorPos.Y > center.Y)
-                        newOffset.Y = cursorPos.Y - Height * .5f;
-                    else
-                        newOffset.Y = cursorPos.Y + Height * .5f;
-                }
+                delta.Y = Math.Max(delta.Y, .5f * MinimumSize.Y);
+                size.Y = .5f * size.Y + delta.Y;
+                pos.Y = ((resizeDir.Y * delta.Y) + pos.Y) + (-resizeDir.Y * .5f * size.Y);
             }
 
-            Offset = newOffset;
+            Size = size;
+            Offset = pos - Origin;
         }
 
-        protected override void HandleInput(Vector2 cursorPos)
+		protected override void HandleInput(Vector2 cursorPos)
         {
             if (IsMousedOver)
             {
                 if (SharedBinds.LeftButton.IsNewPressed && !WindowActive)
-                    GetFocus();
+					GetWindowFocus();
             }
 
             if (AllowResizing && resizeInput.IsNewLeftClicked && !inputInner.IsMousedOver)
             {
-                Vector2 pos = Origin + Offset;
-                canResize = true;
-                resizeDir = 0;
+                Vector2 pos = Origin + Offset,
+                        delta = cursorPos - pos;
 
-                if (Width - (2f) * Math.Abs(pos.X - cursorPos.X) <= cornerSize)
-                    resizeDir += 1;
+                resizeDir = Vector2.Zero;
 
-                if (Height - (2f) * Math.Abs(pos.Y - cursorPos.Y) <= cornerSize)
-                    resizeDir += 2;
+                if (Width - (2f * Math.Abs(delta.X)) <= cornerSize)
+                    resizeDir.X = (delta.X >= 0f) ? 1f : -1f;
+
+                if (Height - (2f * Math.Abs(delta.Y)) <= cornerSize)
+                    resizeDir.Y = (delta.Y >= 0f) ? 1f : -1f;
             }
             else if (CanDrag && header.MouseInput.IsNewLeftClicked)
             {
@@ -240,29 +207,46 @@ namespace RichHudFramework.UI
                 cursorOffset = (Origin + Offset) - cursorPos;
             }
 
-            if (canResize || canMoveWindow)
+            if ((resizeDir != Vector2.Zero) || canMoveWindow)
             {
                 if (!SharedBinds.LeftButton.IsPressed)
                 {
                     canMoveWindow = false;
-                    canResize = false;
+                    resizeDir = Vector2.Zero;
                 }
             }
+
+            if (!WindowActive)
+            {
+                canMoveWindow = false;
+                resizeDir = Vector2.Zero;
+            }
+
+            if (canMoveWindow)
+                Offset = cursorPos + cursorOffset - Origin;
+
+            if (resizeDir != Vector2.Zero)
+                Resize(cursorPos);
         }
 
-        /// <summary>
-        /// Brings the window into the foreground
-        /// </summary>
-        public virtual void GetFocus()
-        {
-            layerData.zOffsetInner = HudMain.GetFocusOffset(LoseFocusCallback);
-            WindowActive = true;
-        }
+		/// <summary>
+		/// Causes a window to be brought to the foreground. Overriding methods must call the 
+		/// base implementation.
+		/// </summary>
+		public virtual void GetWindowFocus()
+		{
+			OverlayOffset = HudMain.GetFocusOffset(LoseWindowFocus);
+			WindowActive = true;
+		}
 
-        protected virtual void LoseFocus(byte newOffset)
-        {
-            layerData.zOffsetInner = newOffset;
-            WindowActive = false;
-        }
-    }
+		/// <summary>
+		/// Invoked when a window that previously had focus loses it. Overriding methods must call 
+		/// the base implementation.
+		/// </summary>
+		protected virtual void LoseWindowFocus(byte newLayer)
+		{
+			OverlayOffset = newLayer;
+			WindowActive = false;
+		}
+	}
 }

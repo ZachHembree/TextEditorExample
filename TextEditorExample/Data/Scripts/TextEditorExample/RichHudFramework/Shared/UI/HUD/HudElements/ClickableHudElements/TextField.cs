@@ -138,13 +138,13 @@ namespace RichHudFramework.UI
             border = new BorderBox(background)
             {
                 Thickness = 1f,
-                DimAlignment = DimAlignments.Both,
+                DimAlignment = DimAlignments.Size,
             };
 
             textBox = new TextBox(background)
             {
                 AutoResize = false,
-                DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                DimAlignment = DimAlignments.UnpaddedSize,
                 Padding = new Vector2(24f, 0f),
                 MoveToEndOnGainFocus = true,
                 ClearSelectionOnLoseFocus = true
@@ -189,14 +189,20 @@ namespace RichHudFramework.UI
         {
             if (HighlightEnabled)
             {
-                if (!(UseFocusFormatting && MouseInput.HasFocus))
+                if (!UseFocusFormatting || !MouseInput.HasFocus)
                 {
                     lastColor = Color;
-                    lastTextColor = Format.Color;
                 }
 
-                TextBoard.SetFormatting(TextBoard.Format.WithColor(lastTextColor));
-                Color = HighlightColor;
+                if (UseFocusFormatting)
+                {
+					if (!MouseInput.HasFocus)
+						lastTextColor = Format.Color;
+
+					TextBoard.SetFormatting(TextBoard.Format.WithColor(lastTextColor));
+				}
+
+				Color = HighlightColor;
             }
         }
 
@@ -212,7 +218,9 @@ namespace RichHudFramework.UI
                 else
                 {
                     Color = lastColor;
-                    TextBoard.SetFormatting(TextBoard.Format.WithColor(lastTextColor));
+
+                    if (UseFocusFormatting)
+                        TextBoard.SetFormatting(TextBoard.Format.WithColor(lastTextColor));
                 }
             }
         }

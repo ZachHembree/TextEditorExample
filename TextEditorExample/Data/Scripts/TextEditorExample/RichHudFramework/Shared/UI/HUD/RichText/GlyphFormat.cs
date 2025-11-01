@@ -64,7 +64,10 @@ namespace RichHudFramework
             /// </summary>
             public Color Color => Data.Item4;
 
-            public GlyphFormatMembers Data { get; }
+            /// <summary>
+            /// Internal format storage
+            /// </summary>
+            public GlyphFormatMembers Data { get; set; }
 
             public GlyphFormat(Color color, TextAlignment alignment, float textSize, Vector2I fontStyle)
             {
@@ -112,6 +115,13 @@ namespace RichHudFramework
             /// </summary>
             public GlyphFormat WithFont(int font) =>
                 new GlyphFormat(Color, Alignment, TextSize, new Vector2I(font, 0));
+
+            /// <summary>
+            /// Returns a copy of the <see cref="GlyphFormat"/> using the given font interface. Assumes regular
+            /// styling.
+            /// </summary>
+            public GlyphFormat WithFont(IFontMin font) =>
+                new GlyphFormat(Color, Alignment, TextSize, font.Regular);
 
             /// <summary>
             /// Returns a copy of the <see cref="GlyphFormat"/> using the font style associated with the given index.

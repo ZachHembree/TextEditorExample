@@ -135,11 +135,6 @@ namespace RichHudFramework.UI
         public Vector2 HighlightPadding { get { return listBox.HighlightPadding; } set { listBox.HighlightPadding = value; } }
 
         /// <summary>
-        /// Minimum number of elements visible in the list at any given time.
-        /// </summary>
-        public int MinVisibleCount { get { return listBox.MinVisibleCount; } set { listBox.MinVisibleCount = value; } }
-
-        /// <summary>
         /// Current selection. Null if empty.
         /// </summary>
         public TContainer Selection => listBox.Selection;
@@ -174,11 +169,11 @@ namespace RichHudFramework.UI
         {
             display = new DropdownDisplay(this)
             {
-                DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                DimAlignment = DimAlignments.UnpaddedSize,
                 Text = "None"
             };
 
-            listBox = new ListBox<TContainer, TElement, TValue>()
+            listBox = new ListBox<TContainer, TElement, TValue>(this)
             {
                 Visible = false,
                 CanIgnoreMasking = true,
@@ -187,9 +182,9 @@ namespace RichHudFramework.UI
                 ParentAlignment = ParentAlignments.Bottom,
                 TabColor = new Color(0, 0, 0, 0),
             };
-            listBox.Register(display, true);
             
             Size = new Vector2(331f, 43f);
+            DropdownHeight = 100f;
 
             display.MouseInput.LeftClicked += ClickDisplay;
             SelectionChanged += UpdateDisplay;
@@ -198,7 +193,7 @@ namespace RichHudFramework.UI
         public Dropdown() : this(null)
         { }
 
-        protected override void HandleInput(Vector2 cursorPos)
+		protected override void HandleInput(Vector2 cursorPos)
         {
             if (SharedBinds.LeftButton.IsNewPressed && !(display.IsMousedOver || listBox.IsMousedOver))
                 CloseList();
@@ -360,7 +355,6 @@ namespace RichHudFramework.UI
             public readonly Label name;
             public readonly TexturedBox arrow, divider;
 
-            private readonly HudChain layout;
             private readonly BorderBox border;
             private Color lastTextColor;
 
@@ -369,7 +363,7 @@ namespace RichHudFramework.UI
                 border = new BorderBox(this)
                 {
                     Thickness = 1f,
-                    DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding,
+                    DimAlignment = DimAlignments.UnpaddedSize,
                 };
 
                 name = new Label()
@@ -392,11 +386,11 @@ namespace RichHudFramework.UI
                     Material = arrowMat,
                 };
 
-                layout = new HudChain(false, this)
+                var layout = new HudChain(false, this)
                 {
-                    SizingMode = HudChainSizingModes.FitMembersOffAxis | HudChainSizingModes.FitChainBoth,
-                    DimAlignment = DimAlignments.Height | DimAlignments.IgnorePadding,
-                    CollectionContainer = { name, divider, arrow }
+                    SizingMode = HudChainSizingModes.FitMembersOffAxis,
+                    DimAlignment = DimAlignments.UnpaddedSize,
+                    CollectionContainer = { { name , 1f }, divider, arrow }
                 };
 
                 Format = TerminalFormatting.ControlFormat;
@@ -414,15 +408,9 @@ namespace RichHudFramework.UI
                 _mouseInput.LostInputFocus += LoseFocus;
             }
 
-            protected override void Layout()
+			protected override void HandleInput(Vector2 cursorPos)
             {
-                base.Layout();
-                name.Width = (Width - Padding.X) - divider.Width - arrow.Width;
-            }
-
-            protected override void HandleInput(Vector2 cursorPos)
-            {
-                if (MouseInput.HasFocus)
+				if (MouseInput.HasFocus)
                 {
                     if (SharedBinds.Space.IsNewPressed)
                     {
@@ -440,16 +428,19 @@ namespace RichHudFramework.UI
             {
                 if (HighlightEnabled)
                 {
-                    if (!(UseFocusFormatting && MouseInput.HasFocus))
-                    {
+                    if (!UseFocusFormatting || !MouseInput.HasFocus)
                         lastBackgroundColor = Color;
-                        lastTextColor = name.Format.Color;
-                    }
 
-                    Color = HighlightColor;
-                    name.TextBoard.SetFormatting(name.Format.WithColor(lastTextColor));
+                    if (UseFocusFormatting)
+                    {
+						if (!MouseInput.HasFocus)
+							lastTextColor = name.Format.Color;
 
-                    divider.Color = lastTextColor.SetAlphaPct(0.8f);
+						name.TextBoard.SetFormatting(name.Format.WithColor(lastTextColor));
+					}
+
+					Color = HighlightColor;
+					divider.Color = lastTextColor.SetAlphaPct(0.8f);
                     arrow.Color = lastTextColor;
                 }
             }
@@ -469,7 +460,9 @@ namespace RichHudFramework.UI
                     else
                     {
                         Color = lastBackgroundColor;
-                        name.TextBoard.SetFormatting(name.Format.WithColor(lastTextColor));
+
+                        if (UseFocusFormatting)
+                            name.TextBoard.SetFormatting(name.Format.WithColor(lastTextColor));
 
                         divider.Color = lastTextColor.SetAlphaPct(0.8f);
                         arrow.Color = lastTextColor;
