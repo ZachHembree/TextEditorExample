@@ -22,7 +22,7 @@ namespace TextEditorExample
         {
             textBox = new EditorTextBox(body)
             {
-                ParentAlignment = ParentAlignments.Bottom | ParentAlignments.InnerV,
+                ParentAlignment = ParentAlignments.InnerBottom,
                 DimAlignment = DimAlignments.Width
             };
 

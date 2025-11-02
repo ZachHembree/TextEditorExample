@@ -20,11 +20,11 @@ namespace TextEditorExample
                 text = new TextBox(this)
                 {
                     // Align the text box to the top left corner of the parent element and place it on the interior
-                    ParentAlignment = ParentAlignments.Top | ParentAlignments.Left | ParentAlignments.Inner | ParentAlignments.UsePadding,
+                    ParentAlignment = ParentAlignments.PaddedInnerTopLeft,
                     Padding = new Vector2(8f, 8f),
 
                     Format = GlyphFormat.White,
-                    VertCenterText = false, // This is a text editor; I don't want the text centered.
+                    VertCenterText = false, // This is a text editor; I want the text to start at the top, not the center.
                     AutoResize = false, // Allows the text box size to be set manually (or via DimAlignment)
                     ClearSelectionOnLoseFocus = false // Leaving this enabled creates problems when trying to reformat text
                 };
@@ -33,7 +33,7 @@ namespace TextEditorExample
                 verticalScroll = new ScrollBar(this)
                 {
                     // Align this element s.t. it will be to the right of the text box
-                    ParentAlignment = ParentAlignments.Top | ParentAlignments.Right | ParentAlignments.Inner | ParentAlignments.UsePadding,
+                    ParentAlignment = ParentAlignments.PaddedInnerTopRight,
                     Padding = new Vector2(8f),
                     Width = 18f,
                     Vertical = true,
@@ -42,7 +42,7 @@ namespace TextEditorExample
                 horizontalScroll = new ScrollBar(this)
                 {
                     // Align this s.t. it will be below both the text box and the right scroll bar
-                    ParentAlignment = ParentAlignments.Bottom | ParentAlignments.Inner | ParentAlignments.UsePadding,
+                    ParentAlignment = ParentAlignments.PaddedInnerBottom,
                     Padding = new Vector2(8f),
                     Height = 18f,
                     Vertical = false,
@@ -75,7 +75,7 @@ namespace TextEditorExample
                 
                 The TextBoard allows you to set an offset for the text being rendered starting from the
                 center of the element. Text outside the bounds of the element will not be drawn.
-                Offset is measured in pixels and updates with changes to scale.
+                Offset is measured in pixels or DPI-normalized points and updates with changes to scale.
                  
                 An offset in the negative direction on the X-axis will offset the text to the left; a positive
                 offset will move the text to the right.
@@ -92,8 +92,7 @@ namespace TextEditorExample
                     vertControl = verticalScroll.slide.MouseInput;
 
                 // If the total width of the text is greater than the size of the element, then I can scroll
-                // horiztonally. This value is negative because the text is starts at the right hand side
-                // and I need to move it left.
+                // horiztonally.
                 horizontalScroll.Max = Math.Max(0f, textBoard.TextSize.X - textBoard.Size.X);
 
                 // Same principle, but vertical and moving up. TextBoards start at the first line which means
@@ -101,9 +100,11 @@ namespace TextEditorExample
                 verticalScroll.Max = Math.Max(0f, textBoard.TextSize.Y - textBoard.Size.Y);
 
                 // Update the ScrollBar positions to represent the current offset unless they're being clicked.
+                // Negative X offset to move left.
                 if (!horzControl.IsLeftClicked)
                     horizontalScroll.Current = -textBoard.TextOffset.X;
 
+                // Positive Y offset to move up.
                 if (!vertControl.IsLeftClicked)
                     verticalScroll.Current = textBoard.TextOffset.Y;
 

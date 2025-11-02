@@ -141,9 +141,9 @@ namespace TextEditorExample
                     // wider than the total size of the members
                     SizingMode = HudChainSizingModes.FitMembersOffAxis | HudChainSizingModes.ClampChainAlignAxis,
                     // Match the height of the chain and its children to the toolbar
-                    DimAlignment = DimAlignments.Height | DimAlignments.IgnorePadding,
+                    DimAlignment = DimAlignments.UnpaddedHeight,
                     // The width of the parent could very well be greater than the width of the controls.
-                    ParentAlignment = ParentAlignments.Left | ParentAlignments.InnerH | ParentAlignments.UsePadding,
+                    ParentAlignment = ParentAlignments.PaddedInnerLeft,
                     // The order the elements will appear on the toolbar from left to right.
                     CollectionContainer = { fontList, sizeList, boldToggle, underlineToggle, italicToggle, textBuilderModes }
                 };
@@ -159,7 +159,7 @@ namespace TextEditorExample
                 _format = GlyphFormat.White;
             }
 
-            protected override void Layout()
+            protected override void UpdateSize()
             {
                 // The width of the toolbar should not be less than the total width of the controls
                 // it contains.
@@ -184,7 +184,7 @@ namespace TextEditorExample
                     if (boldToggle.Selected)
                         style |= FontStyles.Bold;
 
-                    // Underlining and italics are render as effects and are available
+                    // Underlining and italics are rendered as effects and are available
                     // for every font
                     if (underlineToggle.Selected)
                         style |= FontStyles.Underline;

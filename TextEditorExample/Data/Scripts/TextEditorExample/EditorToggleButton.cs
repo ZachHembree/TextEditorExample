@@ -51,8 +51,8 @@ namespace TextEditorExample
                 disabledOverlay = new TexturedBox(this)
                 { 
                     Visible = false,
-                    DimAlignment = DimAlignments.Both | DimAlignments.IgnorePadding
-                };
+                    DimAlignment = DimAlignments.UnpaddedSize
+				};
 
                 Color = TerminalFormatting.OuterSpace;
                 HighlightColor = TerminalFormatting.Atomic;
