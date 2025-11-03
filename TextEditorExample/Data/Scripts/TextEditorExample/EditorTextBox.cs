@@ -22,11 +22,14 @@ namespace TextEditorExample
                     // Align the text box to the top left corner of the parent element and place it on the interior
                     ParentAlignment = ParentAlignments.PaddedInnerTopLeft,
                     Padding = new Vector2(8f, 8f),
+					// This needs to be disabled to avoid clearing selections when setting formatting
+					ClearSelectionOnLoseFocus = false,
+                    // Enter/Return is used by chat, so we need an alternative line break
+                    NewLineChar = '|',
 
                     Format = GlyphFormat.White,
                     VertCenterText = false, // This is a text editor; I want the text to start at the top, not the center.
-                    AutoResize = false, // Allows the text box size to be set manually (or via DimAlignment)
-                    ClearSelectionOnLoseFocus = false // Leaving this enabled creates problems when trying to reformat text
+                    AutoResize = false // Allows the text box size to be set manually (or via DimAlignment)
                 };
 
                 // These scroll bars will be used to control text scrolling via textboard text offset
