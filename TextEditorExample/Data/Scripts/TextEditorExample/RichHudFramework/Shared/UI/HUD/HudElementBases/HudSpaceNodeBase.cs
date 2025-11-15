@@ -49,8 +49,8 @@ namespace RichHudFramework
 			/// </summary>
 			public Func<Vector3D> GetNodeOriginFunc
 			{
-				get { return _dataHandle[0].Item2[0]; }
-				protected set { _dataHandle[0].Item2[0] = value; }
+				get { return DataHandle[0].Item2[0]; }
+				protected set { DataHandle[0].Item2[0] = value; }
 			}
 
 			/// <summary>
@@ -74,7 +74,7 @@ namespace RichHudFramework
 				GetHudSpaceFunc = () => new MyTuple<bool, float, MatrixD>(DrawCursorInHudSpace, 1f, PlaneToWorldRef[0]);
 				GetNodeOriginFunc = () => PlaneToWorldRef[0].Translation;
 				PlaneToWorldRef = new MatrixD[1];
-				Config[StateID] |= (uint)HudElementStates.IsSpaceNode;
+				_config[StateID] |= (uint)HudElementStates.IsSpaceNode;
 			}
 
 			protected override void Layout()

@@ -8,16 +8,17 @@ namespace RichHudFramework
 		using Server;
 		using Client;
 		using Internal;
+		using System.Collections.Generic;
 
 		/// <summary>
-		/// Base type for all hud elements with definite size and position. Inherits from HudParentBase and HudNodeBase.
+		/// Base type for all UI elements with definite size and position. Extends HudParentBase and HudNodeBase.
 		/// </summary>
-		public abstract class HudElementBase : HudNodeBase, IReadOnlyHudElement
+		public abstract partial class HudElementBase : HudNodeBase, IReadOnlyHudElement
 		{
 			protected const float minMouseBounds = 8f;
 
 			/// <summary>
-			/// Size of the element. Units in pixels by default.
+			/// Size of the element. Units in pixels with HudMain.Root.
 			/// </summary>
 			public Vector2 Size
 			{
@@ -35,7 +36,7 @@ namespace RichHudFramework
 			}
 
 			/// <summary>
-			/// Width of the hud element. Units in pixels by default.
+			/// Width of the element. Units in pixels by HudMain.Root.
 			/// </summary>
 			public float Width
 			{
@@ -50,7 +51,7 @@ namespace RichHudFramework
 			}
 
 			/// <summary>
-			/// Height of the hud element. Units in pixels by default.
+			/// Height of the element. Units in pixels by HudMain.Root.
 			/// </summary>
 			public float Height
 			{
@@ -75,17 +76,18 @@ namespace RichHudFramework
 			public Vector2 UnpaddedSize { get; set; }
 
 			/// <summary>
-			/// Starting position of the hud element.
+			/// Starting position of the hud element. Starts in the center of the parent node 
+			/// by default. This behavior can be modified with ParentAlignment flags.
 			/// </summary>
 			public Vector2 Origin { get; private set; }
 
 			/// <summary>
-			/// Position of the element relative to its origin.
+			/// Position of the center of the UI element relative to its origin.
 			/// </summary>
 			public Vector2 Offset { get; set; }
 
 			/// <summary>
-			/// Current position of the hud element. Origin + Offset.
+			/// Current position of the center of the UI element. Origin + Offset.
 			/// </summary>
 			public Vector2 Position { get; private set; }
 
@@ -100,7 +102,7 @@ namespace RichHudFramework
 			public DimAlignments DimAlignment { get; set; }
 
 			/// <summary>
-			/// If set to true the hud element will be allowed to capture the cursor.
+			/// Enables or disables cursor input and capture
 			/// </summary>
 			public bool UseCursor
 			{
@@ -108,9 +110,9 @@ namespace RichHudFramework
 				set
 				{
 					if (value)
-						Config[StateID] |= (uint)HudElementStates.CanUseCursor;
+						_config[StateID] |= (uint)HudElementStates.CanUseCursor;
 					else
-						Config[StateID] &= ~(uint)HudElementStates.CanUseCursor;
+						_config[StateID] &= ~(uint)HudElementStates.CanUseCursor;
 
 					if (value && _dataHandle[0].Item3.Item3 == null)
 						_dataHandle[0].Item3.Item3 = BeginInput;
@@ -126,9 +128,9 @@ namespace RichHudFramework
 				set
 				{
 					if (value)
-						Config[StateID] |= (uint)HudElementStates.CanShareCursor;
+						_config[StateID] |= (uint)HudElementStates.CanShareCursor;
 					else
-						Config[StateID] &= ~(uint)HudElementStates.CanShareCursor;
+						_config[StateID] &= ~(uint)HudElementStates.CanShareCursor;
 				}
 			}
 
@@ -142,9 +144,9 @@ namespace RichHudFramework
 				set
 				{
 					if (value)
-						Config[StateID] |= (uint)HudElementStates.IsMasking;
+						_config[StateID] |= (uint)HudElementStates.IsMasking;
 					else
-						Config[StateID] &= ~(uint)HudElementStates.IsMasking;
+						_config[StateID] &= ~(uint)HudElementStates.IsMasking;
 				}
 			}
 
@@ -158,9 +160,9 @@ namespace RichHudFramework
 				set
 				{
 					if (value)
-						Config[StateID] |= (uint)HudElementStates.IsSelectivelyMasked;
+						_config[StateID] |= (uint)HudElementStates.IsSelectivelyMasked;
 					else
-						Config[StateID] &= ~(uint)HudElementStates.IsSelectivelyMasked;
+						_config[StateID] &= ~(uint)HudElementStates.IsSelectivelyMasked;
 				}
 			}
 
@@ -174,9 +176,9 @@ namespace RichHudFramework
 				set
 				{
 					if (value)
-						Config[StateID] |= (uint)HudElementStates.CanIgnoreMasking;
+						_config[StateID] |= (uint)HudElementStates.CanIgnoreMasking;
 					else
-						Config[StateID] &= ~(uint)HudElementStates.CanIgnoreMasking;
+						_config[StateID] &= ~(uint)HudElementStates.CanIgnoreMasking;
 				}
 			}
 
@@ -198,7 +200,7 @@ namespace RichHudFramework
 			protected BoundingBox2? maskingBox;
 
 			/// <summary>
-			/// Initializes a new hud element with cursor sharing enabled and scaling set to 1f.
+			/// Initializes a new UI element attached to the given parent.
 			/// </summary>
 			public HudElementBase(HudParentBase parent) : base(parent)
 			{
@@ -211,8 +213,10 @@ namespace RichHudFramework
 			}
 
 			/// <summary>
-			/// Used to check whether the cursor is moused over the element and whether its being
-			/// obstructed by another element.
+			/// Update hook for testing cursor bounding and depth tests. 
+			/// 
+			/// Updates in back-to-front order after Draw(). Elements on the bottom update first, and elements 
+			/// on top update last.
 			/// </summary>
 			protected override void InputDepth()
 			{
@@ -230,17 +234,17 @@ namespace RichHudFramework
 
 					if (mouseInBounds)
 					{
-						Config[StateID] |= (uint)HudElementStates.IsMouseInBounds;
+						_config[StateID] |= (uint)HudElementStates.IsMouseInBounds;
 						HudMain.Cursor.TryCaptureHudSpace(cursorPos.Z, HudSpace.GetHudSpaceFunc);
 					}
 				}
 			}
 
 			/// <summary>
-			/// Updates input for the element and its children. Overriding this method is rarely necessary.
-			/// If you need to update input, use HandleInputCallback.
+			/// Updates input for the element and attempts to capture the cursor if mouse input is enabled.
+			/// Override HandleInput() for customization.
 			/// </summary>
-			public sealed override void BeginInput()
+			protected sealed override void BeginInput()
 			{
 				Vector3 cursorPos = HudSpace.CursorPos;
 				bool canUseCursor = (Config[StateID] & (uint)HudElementStates.CanUseCursor) > 0,
@@ -252,32 +256,32 @@ namespace RichHudFramework
 					bool isMousedOver = mouseInBounds;
 
 					if (isMousedOver)
-						Config[StateID] |= (uint)HudElementStates.IsMousedOver;
+						_config[StateID] |= (uint)HudElementStates.IsMousedOver;
 
-					HandleInput(new Vector2(cursorPos.X, cursorPos.Y));
+					if ((Config[StateID] & (uint)HudElementStates.IsInputHandlerCustom) > 0)
+						HandleInput(new Vector2(cursorPos.X, cursorPos.Y));
 
 					if (!canShareCursor)
 						HudMain.Cursor.Capture(DataHandle[0].Item3.Item1);
 				}
-				else
+				else if ((Config[StateID] & (uint)HudElementStates.IsInputHandlerCustom) > 0)
 				{
 					HandleInput(new Vector2(cursorPos.X, cursorPos.Y));
 				}
 			}
 
 			/// <summary>
-			/// Updates layout for the element and its children. Overriding this method is rarely necessary. 
-			/// If you need to update layout, use LayoutCallback.
+			/// Updates internal state and child alignment. Override Layout() for customization.
 			/// </summary>
-			public sealed override void BeginLayout(bool _)
+			protected sealed override void BeginLayout(bool _)
 			{
 				var parentFull = Parent as HudElementBase;
 				HudSpace = Parent?.HudSpace;
 
 				if (HudSpace != null)
-					Config[StateID] |= (uint)HudElementStates.IsSpaceNodeReady;
+					_config[StateID] |= (uint)HudElementStates.IsSpaceNodeReady;
 				else
-					Config[StateID] &= ~(uint)HudElementStates.IsSpaceNodeReady;
+					_config[StateID] &= ~(uint)HudElementStates.IsSpaceNodeReady;
 
 				if (parentFull != null)
 				{
@@ -285,21 +289,21 @@ namespace RichHudFramework
 				}
 				else
 				{
-					Origin = Vector2.Zero;
-					Position = Offset;
+					Position = Origin + Offset;
 					Padding = Padding;
 					CachedSize = UnpaddedSize + Padding;
 				}
 
-				Layout();
+				if ((Config[StateID] & (uint)HudElementStates.IsLayoutCustom) > 0)
+					Layout();
 
 				// Masking configuration
 				if (parentFull != null && (parentFull.Config[StateID] & (uint)HudElementStates.IsMasked) > 0 &&
 					(Config[StateID] & (uint)HudElementStates.CanIgnoreMasking) == 0
 				)
-					Config[StateID] |= (uint)HudElementStates.IsMasked;
+					_config[StateID] |= (uint)HudElementStates.IsMasked;
 				else
-					Config[StateID] &= ~(uint)HudElementStates.IsMasked;
+					_config[StateID] &= ~(uint)HudElementStates.IsMasked;
 
 				if ((Config[StateID] & (uint)HudElementStates.IsMasking) > 0 ||
 					(parentFull != null && (Config[StateID] & (uint)HudElementStates.IsSelectivelyMasked) > 0))
@@ -326,32 +330,34 @@ namespace RichHudFramework
 				}
 
 				if (isDisjoint)
-					Config[StateID] |= (uint)HudElementStates.IsDisjoint;
+					_config[StateID] |= (uint)HudElementStates.IsDisjoint;
 				else
-					Config[StateID] &= ~(uint)HudElementStates.IsDisjoint;
+					_config[StateID] &= ~(uint)HudElementStates.IsDisjoint;
 
 				if (children.Count > 0)
 					UpdateChildAlignment();
-			}
+			}			
 
 			/// <summary>
-			/// Updates cached values as well as parent and dim alignment.
+			/// Updates child anchoring and automatic sizing
 			/// </summary>
-			protected void UpdateChildAlignment()
+			private void UpdateChildAlignment()
 			{
 				// Update size
 				for (int i = 0; i < children.Count; i++)
 				{
 					var child = children[i] as HudElementBase;
 
-					if (child != null)
-						child.Config[StateID] |= (uint)HudElementStates.WasParentVisible;
+					if (child == null)
+						continue;
+
+					child._config[StateID] |= (uint)HudElementStates.WasParentVisible;
 
 					if (child != null && (child.Config[StateID] & (child.Config[VisMaskID])) == child.Config[VisMaskID])
 					{
 						child.Padding = child.Padding;
 
-						Vector2 size = child.UnpaddedSize + child.Padding;
+						Vector2 childSize = child.UnpaddedSize + child.Padding;
 						DimAlignments sizeFlags = child.DimAlignment;
 
 						if (sizeFlags != DimAlignments.None)
@@ -359,24 +365,24 @@ namespace RichHudFramework
 							if ((sizeFlags & DimAlignments.IgnorePadding) == DimAlignments.IgnorePadding)
 							{
 								if ((sizeFlags & DimAlignments.Width) == DimAlignments.Width)
-									size.X = CachedSize.X - Padding.X;
+									childSize.X = UnpaddedSize.X;
 
 								if ((sizeFlags & DimAlignments.Height) == DimAlignments.Height)
-									size.Y = CachedSize.Y - Padding.Y;
+									childSize.Y = UnpaddedSize.Y;
 							}
 							else
 							{
 								if ((sizeFlags & DimAlignments.Width) == DimAlignments.Width)
-									size.X = CachedSize.X;
+									childSize.X = CachedSize.X;
 
 								if ((sizeFlags & DimAlignments.Height) == DimAlignments.Height)
-									size.Y = CachedSize.Y;
+									childSize.Y = CachedSize.Y;
 							}
 
-							child.UnpaddedSize = size - child.Padding;
+							child.UnpaddedSize = childSize - child.Padding;
 						}
 
-						child.CachedSize = size;
+						child.CachedSize = childSize;
 					}
 				}
 
@@ -430,9 +436,9 @@ namespace RichHudFramework
 			/// <summary>
 			/// Updates masking state and bounding boxes used to mask billboards
 			/// </summary>
-			protected void UpdateMasking()
+			private void UpdateMasking()
 			{
-				Config[StateID] |= (uint)HudElementStates.IsMasked;
+				_config[StateID] |= (uint)HudElementStates.IsMasked;
 
 				BoundingBox2? parentBox, box = null;
 				var parentFull = Parent as HudElementBase;
@@ -472,6 +478,9 @@ namespace RichHudFramework
 				maskingBox = box;
 			}
 
+			/// <summary>
+			/// Internal debugging method
+			/// </summary>
 			protected override object GetOrSetApiMember(object data, int memberEnum)
 			{
 				switch ((HudElementAccessors)memberEnum)

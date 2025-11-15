@@ -10,7 +10,7 @@ namespace RichHudFramework
         using Server;
 
         /// <summary>
-        /// Base type for hud elements that have text elements and a <see cref="TexturedBox"/> background.
+        /// Base type for elements combining Labels with textured backgrounds.
         /// </summary>
         public abstract class LabelBoxBase : HudElementBase
         {
@@ -25,13 +25,16 @@ namespace RichHudFramework
             public abstract Vector2 TextPadding { get; set; }
 
             /// <summary>
-            /// Determines whether or not the text box can be resized manually.
+            /// If true, the text will set its bounds equal to the total text size. If false, the text bounds
+            /// are set manually. Setting sizes smaller than the TextSize will result in extraneous text being
+            /// clipped or drawing outside the bounds of the element.
             /// </summary>
             public abstract bool AutoResize { get; set; }
 
             /// <summary>
             /// If true, then the background will resize to match the size of the text plus padding. Otherwise,
-            /// size will be clamped such that the element will not be smaller than the text element.
+            /// size will be clamped such that the element will not be smaller than the text element. Does not 
+            /// apply if AutoResize is disabled.
             /// </summary>
             public bool FitToTextElement { get; set; }
 
@@ -54,18 +57,25 @@ namespace RichHudFramework
 
                 FitToTextElement = true;
                 Color = Color.Gray;
-            }
+				UnpaddedSize = new Vector2(50f);
+			}
 
-            protected override void UpdateSize()
+            protected override void Measure()
             {
+				if (AutoResize)
+				{
+                    if (FitToTextElement)
+                        UnpaddedSize = TextSize;
+                    else
+                        UnpaddedSize = Vector2.Max(UnpaddedSize, TextSize);
+				}
+			}
+
+			protected override void Layout()
+			{
 				if (!AutoResize)
 				{
 					TextSize = UnpaddedSize;
-				}
-  
-				if (FitToTextElement)
-				{
-					UnpaddedSize = TextSize;
 				}
 			}
         }
