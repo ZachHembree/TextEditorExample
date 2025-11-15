@@ -159,7 +159,7 @@ namespace TextEditorExample
                 _format = GlyphFormat.White;
             }
 
-            protected override void UpdateSize()
+            protected override void Measure()
             {
                 // The width of the toolbar should not be less than the total width of the controls
                 // it contains.
