@@ -8,13 +8,13 @@ namespace RichHudFramework.UI
 	using static NodeConfigIndices;
 
 	/// <summary>
-	/// A clickable box. Doesn't render any textures or text. Must be used in conjunction with other elements.
-	/// Events return the parent object, or InputOwner if specified.
+	/// Core mouse interaction component for clickable UI elements.
+	/// Handles cursor enter/exit, left/right clicks, tooltip registration, and automatic focus acquisition on click.
 	/// </summary>
 	public class MouseInputElement : HudElementBase, IMouseInput
 	{
 		/// <summary>
-		/// Element that owns this input, used for event callbacks.
+		/// UI element that owns the input, used for event callbacks.
 		/// </summary>
 		public IFocusHandler FocusHandler { get; protected set; }
 
@@ -138,23 +138,27 @@ namespace RichHudFramework.UI
 			RightReleased = null;
 		}
 
+		/// <summary>
+		/// Updates cursor hit testing for the element
+		/// </summary>
+		/// <exclude/>
 		protected override void InputDepth()
 		{
 			if (HudSpace.IsFacingCamera)
 			{
 				Vector3 cursorPos = HudSpace.CursorPos;
-				Vector2 halfSize = Vector2.Max(CachedSize, new Vector2(minMouseBounds)) * .5f;
+				Vector2 halfSize = Vector2.Max(CachedSize, new Vector2(MinMouseBounds)) * .5f;
 				BoundingBox2 box = new BoundingBox2(Position - halfSize, Position + halfSize);
 				bool mouseInBounds;
 
-				if (maskingBox == null)
+				if (MaskingBox == null)
 				{
 					mouseInBounds = box.Contains(new Vector2(cursorPos.X, cursorPos.Y)) == ContainmentType.Contains
 						|| (IsLeftClicked || IsRightClicked);
 				}
 				else
 				{
-					mouseInBounds = box.Intersect(maskingBox.Value).Contains(new Vector2(cursorPos.X, cursorPos.Y)) == ContainmentType.Contains
+					mouseInBounds = box.Intersect(MaskingBox.Value).Contains(new Vector2(cursorPos.X, cursorPos.Y)) == ContainmentType.Contains
 						|| (IsLeftClicked || IsRightClicked);
 				}
 
@@ -166,16 +170,21 @@ namespace RichHudFramework.UI
 			}
 		}
 
+		/// <summary>
+		/// Updates click input state and fires input events
+		/// </summary>
+		/// <exclude/>
 		protected override void HandleInput(Vector2 cursorPos)
 		{
 			FocusHandler = (Parent as IFocusableElement)?.FocusHandler;
+            var owner = (object)(FocusHandler?.InputOwner) ?? Parent;
 
-			if (IsMousedOver)
+            if (IsMousedOver)
 			{
 				if (!mouseCursorEntered)
 				{
 					mouseCursorEntered = true;
-					CursorEntered?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+					CursorEntered?.Invoke(owner, EventArgs.Empty);
 				}
 
 				if (SharedBinds.LeftButton.IsNewPressed)
@@ -202,7 +211,7 @@ namespace RichHudFramework.UI
 				if (mouseCursorEntered)
 				{
 					mouseCursorEntered = false;
-					CursorExited?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+					CursorExited?.Invoke(owner, EventArgs.Empty);
 				}
 
 				bool hasFocus = FocusHandler?.HasFocus ?? false;
@@ -216,7 +225,7 @@ namespace RichHudFramework.UI
 
 			if (!SharedBinds.LeftButton.IsPressed && IsLeftClicked)
 			{
-				LeftReleased?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+				LeftReleased?.Invoke(owner, EventArgs.Empty);
 				IsLeftReleased = true;
 				IsLeftClicked = false;
 			}
@@ -225,7 +234,7 @@ namespace RichHudFramework.UI
 
 			if (!SharedBinds.RightButton.IsPressed && IsRightClicked)
 			{
-				RightReleased?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+				RightReleased?.Invoke(owner, EventArgs.Empty);
 				IsRightReleased = true;
 				IsRightClicked = false;
 			}
@@ -238,7 +247,8 @@ namespace RichHudFramework.UI
 		/// </summary>
 		public virtual void OnLeftClick()
 		{
-			LeftClicked?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+            var owner = (object)(FocusHandler?.InputOwner) ?? Parent;
+            LeftClicked?.Invoke(owner, EventArgs.Empty);
 			IsLeftClicked = true;
 			IsNewLeftClicked = true;
 			IsLeftReleased = false;
@@ -249,7 +259,8 @@ namespace RichHudFramework.UI
 		/// </summary>
 		public virtual void OnRightClick()
 		{
-			RightClicked?.Invoke(FocusHandler?.InputOwner, EventArgs.Empty);
+            var owner = (object)(FocusHandler?.InputOwner) ?? Parent;
+            RightClicked?.Invoke(owner, EventArgs.Empty);
 			IsRightClicked = true;
 			IsNewRightClicked = true;
 			IsRightReleased = false;
