@@ -15,7 +15,7 @@ namespace TextEditorExample
                 // This dropdown was originally made to mimic the dropdown in the SE terminal,
                 // meaning it's fairly large. Fortunately, shrinking it down to size is just
                 // a matter of thinning down a few elements and changing some text formatting.
-                ScrollBar scrollBar = listBox.hudChain.ScrollBar;
+                ScrollBar scrollBar = listBox.EntryChain.ScrollBar;
 
                 scrollBar.Padding = new Vector2(12f, 8f);
                 scrollBar.Width = 20f;

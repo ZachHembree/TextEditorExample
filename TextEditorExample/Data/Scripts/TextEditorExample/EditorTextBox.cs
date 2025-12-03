@@ -68,8 +68,8 @@ namespace TextEditorExample
                 // text is less than or equal to what will fit in the text box.
                 ITextBoard textBoard = text.TextBoard;
 
-                horizontalScroll.slide.SliderWidth = (textBoard.Size.X / textBoard.TextSize.X) * horizontalScroll.Width;
-                verticalScroll.slide.SliderHeight = (textBoard.Size.Y / textBoard.TextSize.Y) * verticalScroll.Height;
+                horizontalScroll.VisiblePercent = (textBoard.Size.X / textBoard.TextSize.X);
+                verticalScroll.VisiblePercent = (textBoard.Size.Y / textBoard.TextSize.Y);
             }
 
             protected override void HandleInput(Vector2 cursorPos)
@@ -91,8 +91,8 @@ namespace TextEditorExample
                 */
 
                 ITextBoard textBoard = text.TextBoard;
-                IMouseInput horzControl = horizontalScroll.slide.MouseInput,
-                    vertControl = verticalScroll.slide.MouseInput;
+                IMouseInput horzControl = horizontalScroll.SlideInput,
+                    vertControl = verticalScroll.SlideInput;
 
                 // If the total width of the text is greater than the size of the element, then I can scroll
                 // horiztonally.

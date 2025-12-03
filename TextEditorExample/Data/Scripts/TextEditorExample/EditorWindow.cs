@@ -1,8 +1,7 @@
-﻿using System;
-using VRageMath;
+﻿using RichHudFramework.UI;
 using RichHudFramework.UI.Rendering;
-using RichHudFramework.UI;
-using RichHudFramework;
+using System;
+using VRageMath;
 
 namespace TextEditorExample
 {
@@ -31,7 +30,7 @@ namespace TextEditorExample
                 DimAlignment = DimAlignments.Width,
                 ParentAlignment = ParentAlignments.Bottom,
                 Format = textBox.text.Format,
-                BulderMode = textBox.text.BuilderMode,
+                BulderMode = textBox.text.BuilderMode
             };
 
             toolBar.FormatChanged += ChangeFormat;
