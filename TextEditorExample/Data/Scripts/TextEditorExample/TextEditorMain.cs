@@ -1,16 +1,10 @@
 ﻿using RichHudFramework.Client;
-using RichHudFramework.Internal;
-using RichHudFramework.IO;
 using RichHudFramework.UI;
 using RichHudFramework.UI.Client;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using VRage.Game;
 using VRage.Game.Components;
-using VRage.Game.ModAPI;
 using VRage.Input;
-using VRageMath;
 
 namespace TextEditorExample
 {
@@ -34,26 +28,30 @@ namespace TextEditorExample
              * and passing in the child element, by calling the child element's Register() method and passing in the parent or by
              * passing the parent into the child's constructor. 
              
-             I'm using HighDpiRoot instead of Root to compensate for scaling at resolutions > 1080p.
+             I'm using HighDpiRoot instead of Root to compensate for shrinkage at resolutions > 1080p.
            */
             textEditor = new TextEditor(HudMain.HighDpiRoot)
             {
                 Visible = false, // I don't want this to be visible on init.
             };
 
-            editorBinds = BindManager.GetOrCreateGroup("editorBinds");
+            editorBinds = BindManager.GetOrCreateGroup("EditorBinds");
             editorBinds.RegisterBinds(new BindGroupInitializer()
             {
-                { "editorToggle", MyKeys.Home }
+                { "EditorToggle", MyKeys.Home }
             });
 
+            // The index or name can be used here
             editorBinds[0].NewPressed += ToggleEditor;
         }
 
         private void ToggleEditor(object sender, EventArgs args)
         {
+            // Make editor visible and bring it to the front
             textEditor.Visible = !textEditor.Visible;
-            HudMain.EnableCursor = textEditor.Visible;
+
+            if (textEditor.Visible)
+                textEditor.GetWindowFocus();
         }
 
         public override void Draw()

@@ -29,8 +29,8 @@ namespace TextEditorExample
             {
                 DimAlignment = DimAlignments.Width,
                 ParentAlignment = ParentAlignments.Bottom,
-                Format = textBox.text.Format,
-                BulderMode = textBox.text.BuilderMode
+                Format = textBox.content.Format,
+                BulderMode = textBox.content.BuilderMode
             };
 
             toolBar.FormatChanged += ChangeFormat;
@@ -45,6 +45,7 @@ namespace TextEditorExample
 
             HeaderText = "Example Text Editor";
             Size = new Vector2(500f, 300f);
+            MouseInput.RequestCursor = true;
         }
 
         /// <summary>
@@ -52,15 +53,14 @@ namespace TextEditorExample
         /// </summary>
         private void ChangeFormat()
         {
-            ITextBoard textBoard = textBox.text.TextBoard;
+            ITextBoard textBoard = textBox.content.TextBoard;
             textBoard.Format = toolBar.Format;
 
             // Apply new formatting to selected text range. This will completely overwrite the text 
             // formatting of the selected range. Modifying it to only apply the last effect/setting
-            // used would require setting formatting per-character. I should probably add a function
-            // for that in the future, probably using some kind of bit mask.
-            if (!textBox.text.SelectionEmpty)
-                textBoard.SetFormatting(textBox.text.SelectionStart, textBox.text.SelectionEnd, toolBar.Format);
+            // used would require setting formatting per-character.
+            if (!textBox.content.SelectionEmpty)
+                textBoard.SetFormatting(textBox.content.SelectionStart, textBox.content.SelectionEnd, toolBar.Format);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace TextEditorExample
         /// </summary>
         private void ChangeBuilderMode(object sender, EventArgs args)
         {
-            textBox.text.BuilderMode = toolBar.BulderMode;
+            textBox.content.BuilderMode = toolBar.BulderMode;
         }
 
         protected override void Layout()

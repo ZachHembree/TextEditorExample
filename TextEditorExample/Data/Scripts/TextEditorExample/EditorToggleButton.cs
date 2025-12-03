@@ -7,7 +7,7 @@ namespace TextEditorExample
     public partial class TextEditor
     {
         /// <summary>
-        /// A TextBoxButton modified to serve as a toggle button for the editor.
+        /// A <see cref="LabelBoxButton"/> modified to serve as a toggle button for the editor.
         /// </summary>
         private class EditorToggleButton : LabelBoxButton
         {

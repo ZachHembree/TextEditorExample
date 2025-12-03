@@ -1,117 +1,180 @@
-﻿using System;
-using VRageMath;
+﻿using RichHudFramework.UI;
 using RichHudFramework.UI.Rendering;
-using RichHudFramework.UI;
+using System;
+using VRageMath;
 
 namespace TextEditorExample
 {
     public partial class TextEditor
     {
         /// <summary>
-        /// Scrollable text box for the text editor
+        /// Scrollable text box component that forms the core editing area of the text editor.
+        /// Contains the editable text field, horizontal and vertical scrollbars, and a status readout
+        /// showing caret position and total line count.
         /// </summary>
         private class EditorTextBox : HudElementBase
         {
-            public readonly TextBox text;
-            private readonly ScrollBar verticalScroll, horizontalScroll;
+            /// <summary>
+            /// Primary editable text field where the document content is displayed and modified.
+            /// </summary>
+            public readonly TextBox content;
+
+            /// <summary>
+            /// Vertical scrollbar controlling the Y-offset of the text content.
+            /// </summary>
+            private readonly ScrollBar vertScroll;
+
+            /// <summary>
+            /// Horizontal scrollbar controlling the X-offset of the text content.
+            /// </summary>
+            private readonly ScrollBar horzScroll;
+
+            /// <summary>
+            /// Small status label displaying current caret line/column and total line count.
+            /// </summary>
+            private readonly LabelBox posBox;
 
             public EditorTextBox(HudParentBase parent = null) : base(parent)
-            {             
-                text = new TextBox(this)
+            {
+                // Main text editing area
+                content = new TextBox
                 {
-                    // Align the text box to the top left corner of the parent element and place it on the interior
-                    ParentAlignment = ParentAlignments.PaddedInnerTopLeft,
-                    Padding = new Vector2(8f, 8f),
-					// This needs to be disabled to avoid clearing selections when setting formatting
-					ClearSelectionOnLoseFocus = false,
-                    // Enter/Return is used by chat, so we need an alternative line break
+                    Padding = new Vector2(8f),
+                    // Prevent automatic selection clearing when the textbox loses focus (required for formatting operations)
+                    ClearSelectionOnLoseFocus = false,
+                    // Use '|' as newline character because Enter is reserved for in-game chat
                     NewLineChar = '|',
-
                     Format = GlyphFormat.White,
-                    VertCenterText = false, // This is a text editor; I want the text to start at the top, not the center.
-                    AutoResize = false // Allows the text box size to be set manually (or via DimAlignment)
+                    // Align text to the top rather than vertically centering it
+                    VertCenterText = false,
+                    // Disable automatic resizing so the size can be controlled explicitly by layout chains
+                    AutoResize = false
                 };
 
-                // These scroll bars will be used to control text scrolling via textboard text offset
-                verticalScroll = new ScrollBar(this)
+                // Vertical scrollbar (controls vertical text offset)
+                vertScroll = new ScrollBar
                 {
-                    // Align this element s.t. it will be to the right of the text box
-                    ParentAlignment = ParentAlignments.PaddedInnerTopRight,
                     Padding = new Vector2(8f),
                     Width = 18f,
                     Vertical = true,
+                    UpdateValueCallback = UpdateVerticalScroll
                 };
 
-                horizontalScroll = new ScrollBar(this)
+                // Horizontal chain: places the text box and vertical scrollbar side-by-side
+                var horzChain = new HudChain
                 {
-                    // Align this s.t. it will be below both the text box and the right scroll bar
-                    ParentAlignment = ParentAlignments.PaddedInnerBottom,
+                    // Chain height is determined by its tallest member; members stretch horizontally to fill chain width
+                    SizingMode = HudChainSizingModes.FitMembersOffAxis,
+                    CollectionContainer = { { content, 1f }, vertScroll } // content takes remaining space, vertScroll uses fixed width
+                };
+
+                // Horizontal scrollbar (controls horizontal text offset)
+                horzScroll = new ScrollBar
+                {
                     Padding = new Vector2(8f),
                     Height = 18f,
                     Vertical = false,
+                    UpdateValueCallback = UpdateHorizontalScroll
+                };
+
+                // Status readout showing caret position (line, column) and total lines
+                posBox = new LabelBox
+                {
+                    AutoResize = false,           // Width will be dictated by the parent chain
+                    Height = 18f,                 // Fixed height matching the horizontal scrollbar
+                    TextPadding = new Vector2(8f, 0f),
+                    Padding = new Vector2(8f),
+                    Format = GlyphFormat.Blueish.WithSize(0.8f),
+                    Color = TerminalFormatting.DarkSlateGrey
+                };
+
+                // Vertical chain: arranges main content area, horizontal scrollbar, and status line from top to bottom
+                var vertChain = new HudChain(this)
+                {
+                    // Element fills the entire EditorTextBox area minus its own padding
+                    DimAlignment = DimAlignments.UnpaddedSize,
+                    // Members stretch horizontally to fill the chain width
+                    SizingMode = HudChainSizingModes.FitMembersOffAxis,
+                    CollectionContainer = { { horzChain, 1f }, horzScroll, posBox }
+                    // horzChain expands vertically to fill available space; scrollbars and status have fixed height
+                };
+
+                // Mouse-wheel scrolling support when the cursor is over the text content
+                var scrollBinds = new BindInputElement(this)
+                {
+                    // Only process scroll input while the text box itself is under the mouse
+                    InputPredicate = () => content.IsMousedOver,
+                    CollectionInitializer =
+                    {
+                        { SharedBinds.MousewheelUp,   ScrollUp   },
+                        { SharedBinds.MousewheelDown, ScrollDown }
+                    }
                 };
             }
 
-            protected override void Layout()
+            /// <summary>
+            /// Handles mouse-wheel up events; scrolls the visible text upward by one line.
+            /// </summary>
+            private void ScrollUp(object sender, EventArgs args)
             {
-                // Update scroll bar and text box size to match changes parent size
-                verticalScroll.Height = Height - horizontalScroll.Height - Padding.Y;
-                horizontalScroll.Width = Width - Padding.X;
-
-                text.Width = Width - verticalScroll.Width - Padding.X;
-                text.Height = Height - horizontalScroll.Height - Padding.Y;
-
-                // Update slider size to reflect the amount of text being displayed
-                //
-                // ScrollBars will automatically hide the slide if the slide and slide bar are the 
-                // same size, meaning we don't need to worry about hiding the slides if the amount of
-                // text is less than or equal to what will fit in the text box.
-                ITextBoard textBoard = text.TextBoard;
-
-                horizontalScroll.VisiblePercent = (textBoard.Size.X / textBoard.TextSize.X);
-                verticalScroll.VisiblePercent = (textBoard.Size.Y / textBoard.TextSize.Y);
+                ITextBoard board = content.TextBoard;
+                Vector2I range = board.VisibleLineRange;
+                board.MoveToChar(new Vector2I(range.X - 1, 0));
             }
 
-            protected override void HandleInput(Vector2 cursorPos)
+            /// <summary>
+            /// Handles mouse-wheel down events; scrolls the visible text downward by one line.
+            /// </summary>
+            private void ScrollDown(object sender, EventArgs args)
             {
-                /* TextBoard Offsets:
-                
-                The TextBoard allows you to set an offset for the text being rendered starting from the
-                center of the element. Text outside the bounds of the element will not be drawn.
-                Offset is measured in pixels or DPI-normalized points and updates with changes to scale.
-                 
-                An offset in the negative direction on the X-axis will offset the text to the left; a positive
-                offset will move the text to the right.
-                
-                On the Y-axis, a negative offset will move the text down and a positive offset will move it in
-                the opposite direction.
-                
-                By default, the visible range of text will start at the first line on the first character.
-                It starts in the upper left hand corner.
-                */
+                ITextBoard board = content.TextBoard;
+                Vector2I range = board.VisibleLineRange;
+                board.MoveToChar(new Vector2I(range.Y + 1, 0));
+            }
 
-                ITextBoard textBoard = text.TextBoard;
-                IMouseInput horzControl = horizontalScroll.SlideInput,
-                    vertControl = verticalScroll.SlideInput;
+            /// <summary>
+            /// Callback invoked when the vertical scrollbar value changes.
+            /// Updates the text board's Y offset accordingly.
+            /// </summary>
+            private void UpdateVerticalScroll(object sender, EventArgs args)
+            {
+                Vector2 textOffset = content.TextBoard.TextOffset;
+                textOffset.Y = ((ScrollBar)sender).Current;
+                content.TextBoard.TextOffset = textOffset;
+            }
 
-                // If the total width of the text is greater than the size of the element, then I can scroll
-                // horiztonally.
-                horizontalScroll.Max = Math.Max(0f, textBoard.TextSize.X - textBoard.Size.X);
+            /// <summary>
+            /// Callback invoked when the horizontal scrollbar value changes.
+            /// Updates the text board's X offset (negative direction because scrollbar moves opposite to content).
+            /// </summary>
+            private void UpdateHorizontalScroll(object sender, EventArgs args)
+            {
+                Vector2 textOffset = content.TextBoard.TextOffset;
+                textOffset.X = -((ScrollBar)sender).Current;
+                content.TextBoard.TextOffset = textOffset;
+            }
 
-                // Same principle, but vertical and moving up. TextBoards start at the first line which means
-                // every line that follows lower than the last, so I need to move up.
-                verticalScroll.Max = Math.Max(0f, textBoard.TextSize.Y - textBoard.Size.Y);
+            /// <summary>
+            /// Called during layout pass. Updates the status display and synchronizes scrollbar ranges
+            /// and visible percentages with the current text dimensions.
+            /// </summary>
+            protected override void Layout()
+            {
+                // Update caret position and line count display
+                Vector2 caretPos = content.CaretPosition;
+                posBox.TextBoard.SetText($"Ln: {caretPos.X}, Col: {caretPos.Y} Lines:{content.TextBoard.Count}");
 
-                // Update the ScrollBar positions to represent the current offset unless they're being clicked.
-                // Negative X offset to move left.
-                if (!horzControl.IsLeftClicked)
-                    horizontalScroll.Current = -textBoard.TextOffset.X;
+                ITextBoard textBoard = content.TextBoard;
 
-                // Positive Y offset to move up.
-                if (!vertControl.IsLeftClicked)
-                    verticalScroll.Current = textBoard.TextOffset.Y;
+                // Horizontal scrollbar configuration
+                horzScroll.Max = Math.Max(0f, textBoard.TextSize.X - textBoard.Size.X);
+                horzScroll.Current = -textBoard.TextOffset.X; // Negative because offset is opposite to scroll direction
+                horzScroll.VisiblePercent = textBoard.Size.X / Math.Max(textBoard.TextSize.X, 1f);
 
-                textBoard.TextOffset = new Vector2(-horizontalScroll.Current, verticalScroll.Current);
+                // Vertical scrollbar configuration
+                vertScroll.Max = Math.Max(0f, textBoard.TextSize.Y - textBoard.Size.Y);
+                vertScroll.Current = textBoard.TextOffset.Y;
+                vertScroll.VisiblePercent = textBoard.Size.Y / Math.Max(textBoard.TextSize.Y, 1f);
             }
         }
     }

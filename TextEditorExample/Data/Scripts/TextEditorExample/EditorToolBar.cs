@@ -72,7 +72,7 @@ namespace TextEditorExample
                 var background = new TexturedBox(this)
                 {
                     DimAlignment = DimAlignments.Both,
-                    Color = new Color(41, 54, 62),
+                    Color = TerminalFormatting.DarkSlateGrey
                 };
 
                 // Font selection
@@ -82,6 +82,7 @@ namespace TextEditorExample
                     Width = 140f,
                 };
                 
+                // Add Label+IFontMin pairs, with labels styled to match the corresponding font
                 foreach (IFontMin font in FontManager.Fonts)
                     fontList.Add(new RichText(font.Name, GlyphFormat.White.WithFont(font.Regular)), font);
 
@@ -100,15 +101,18 @@ namespace TextEditorExample
                 {
                     Height = 24f,
                     Width = 140f,
+                    ListContainer = 
+                    { 
+                        { "Unlined", TextBuilderModes.Unlined },
+                        { "Lined", TextBuilderModes.Lined },
+                        { "Wrapped", TextBuilderModes.Wrapped }
+                    }
                 };
 
-                textBuilderModes.Add("Unlined", TextBuilderModes.Unlined);
-                textBuilderModes.Add("Lined", TextBuilderModes.Lined);
-                textBuilderModes.Add("Wrapped", TextBuilderModes.Wrapped);
-
                 // Font style toggle
-                IFontMin abhaya = FontManager.GetFont("AbhayaLibreMedium");
-                GlyphFormat buttonFormat = new GlyphFormat(Color.White, TextAlignment.Center, 1.0f, abhaya.Regular);
+                GlyphFormat buttonFormat = GlyphFormat.White
+                    .WithAlignment(TextAlignment.Center)
+                    .WithFont("AbhayaLibreMedium");
 
                 boldToggle = new EditorToggleButton()
                 {
