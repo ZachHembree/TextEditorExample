@@ -139,7 +139,7 @@ namespace TextEditorExample
             private void UpdateVerticalScroll(object sender, EventArgs args)
             {
                 Vector2 textOffset = content.TextBoard.TextOffset;
-                textOffset.Y = ((ScrollBar)sender).Current;
+                textOffset.Y = ((ScrollBar)sender).Value;
                 content.TextBoard.TextOffset = textOffset;
             }
 
@@ -150,7 +150,7 @@ namespace TextEditorExample
             private void UpdateHorizontalScroll(object sender, EventArgs args)
             {
                 Vector2 textOffset = content.TextBoard.TextOffset;
-                textOffset.X = -((ScrollBar)sender).Current;
+                textOffset.X = -((ScrollBar)sender).Value;
                 content.TextBoard.TextOffset = textOffset;
             }
 
@@ -168,12 +168,12 @@ namespace TextEditorExample
 
                 // Horizontal scrollbar configuration
                 horzScroll.Max = Math.Max(0f, textBoard.TextSize.X - textBoard.Size.X);
-                horzScroll.Current = -textBoard.TextOffset.X; // Negative because offset is opposite to scroll direction
+                horzScroll.Value = -textBoard.TextOffset.X; // Negative because offset is opposite to scroll direction
                 horzScroll.VisiblePercent = textBoard.Size.X / Math.Max(textBoard.TextSize.X, 1f);
 
                 // Vertical scrollbar configuration
                 vertScroll.Max = Math.Max(0f, textBoard.TextSize.Y - textBoard.Size.Y);
-                vertScroll.Current = textBoard.TextOffset.Y;
+                vertScroll.Value = textBoard.TextOffset.Y;
                 vertScroll.VisiblePercent = textBoard.Size.Y / Math.Max(textBoard.TextSize.Y, 1f);
             }
         }

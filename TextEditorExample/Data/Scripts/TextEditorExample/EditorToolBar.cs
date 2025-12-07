@@ -24,8 +24,8 @@ namespace TextEditorExample
             /// </summary>
             public event EventHandler BuildModeChanged
             {
-                add { textBuilderModes.SelectionChanged += value; }
-                remove { textBuilderModes.SelectionChanged -= value; }
+                add { textBuilderModes.ValueChanged += value; }
+                remove { textBuilderModes.ValueChanged -= value; }
             }
 
             /// <summary>
@@ -52,7 +52,7 @@ namespace TextEditorExample
             /// <summary>
             /// Current toolbar text builder mode.
             /// </summary>
-            public TextBuilderModes BulderMode { get { return textBuilderModes.Selection.AssocMember; } set { textBuilderModes.SetSelection(value); } }
+            public TextBuilderModes BulderMode { get { return textBuilderModes.Value.AssocMember; } set { textBuilderModes.SetSelection(value); } }
 
             // The width of the HudChain containing the controls is determined by the total width
             // of every element in the chain
@@ -152,8 +152,8 @@ namespace TextEditorExample
                     CollectionContainer = { fontList, sizeList, boldToggle, underlineToggle, italicToggle, textBuilderModes }
                 };
 
-                fontList.SelectionChanged += UpdateFormat;
-                sizeList.SelectionChanged += UpdateFormat;
+                fontList.ValueChanged += UpdateFormat;
+                sizeList.ValueChanged += UpdateFormat;
                 boldToggle.MouseInput.LeftClicked += UpdateFormat;
                 underlineToggle.MouseInput.LeftClicked += UpdateFormat;
                 italicToggle.MouseInput.LeftClicked += UpdateFormat;
@@ -175,10 +175,10 @@ namespace TextEditorExample
             /// </summary>
             private void UpdateFormat(object sender, EventArgs args)
             {
-                if (sizeList.Selection != null && fontList.Selection != null)
+                if (sizeList.Value != null && fontList.Value != null)
                 {
-                    float textSize = sizeList.Selection.AssocMember;
-                    IFontMin font = fontList.Selection.AssocMember;
+                    float textSize = sizeList.Value.AssocMember;
+                    IFontMin font = fontList.Value.AssocMember;
                     FontStyles style = FontStyles.Regular;
 
                     // Bolding requires a separate set of texture atlases, and as such, isn't always
