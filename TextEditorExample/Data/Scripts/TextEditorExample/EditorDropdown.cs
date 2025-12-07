@@ -23,10 +23,6 @@ namespace TextEditorExample
                 // Shrink down the divider and arrow icon in the dropdown display
                 display.divider.Padding = new Vector2(4f, 8f);
                 display.arrow.Width = 22f;
-
-                // By setting the Height to 0, we can ensure that the only determining factor
-                // for the height of the dropdown list is the number of elements visible
-                listBox.Height = 0f;
                 listBox.MinVisibleCount = 4;
 
                 // Make the text smaller
